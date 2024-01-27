@@ -13,6 +13,12 @@ namespace myserver {
 
 // 日志事件
 class LogEvent {
+   public:
+    LogEvent();
+    ~LogEvent();
+
+    typedef std::shared_ptr<LogEvent> ptr;
+
    private:
     // 日志文件名
     const char* m_file = nullptr;
@@ -28,12 +34,6 @@ class LogEvent {
     uint64_t m_time = 0;
     // 日志内容
     std::string m_content;
-
-   public:
-    LogEvent();
-    ~LogEvent();
-
-    typedef std::shared_ptr<LogEvent> ptr;
 };
 
 // 方便其他类确定日志等级
@@ -44,7 +44,6 @@ class LogLevel {
 
 // 日志格式器
 class LogFormatter {
-   private:
    public:
     typedef std::shared_ptr<LogFormatter> ptr;
 
@@ -52,16 +51,12 @@ class LogFormatter {
     ~LogFormatter();
 
     std::string format(LogEvent::ptr event);
+
+   private:
 };
 
 // 日志输出地
 class LogAppender {
-   protected:
-    // 针对哪些日志的等级
-    LogLevel::Level m_level;
-    // 处理不同日志格式
-    LogFormatter::ptr m_formatter;
-
    public:
     typedef std::shared_ptr<LogAppender> ptr;
     LogAppender();
@@ -69,24 +64,21 @@ class LogAppender {
     virtual void log(LogLevel::Level level, LogEvent::ptr event) = 0;
     void setFormatter(LogFormatter::ptr val) { m_formatter = val; }
     LogFormatter::ptr getFormatter() const { return m_formatter; }
+
+   protected:
+    // 针对哪些日志的等级
+    LogLevel::Level m_level;
+    // 处理不同日志格式
+    LogFormatter::ptr m_formatter;
 };
 
 // 日志输出器
 class Logger {
-   private:
-    // Appender集合
-    std::list<LogAppender::ptr> m_appenders;
-    // 日志名称
-    std::string m_name;
-    // 日志器的级别
-    LogLevel::Level m_level;
-
    public:
     Logger(const std::string& name = "root");
     ~Logger();
 
     typedef std::shared_ptr<Logger> ptr;
-
     void log(LogLevel::Level level, LogEvent::ptr event);
 
     // 日志级别方法
@@ -100,22 +92,30 @@ class Logger {
     void delAppender(LogAppender::ptr appender);
     LogLevel::Level getLevel() const { return m_level; }
     void setLevel(LogLevel::Level val) { m_level = val; }
+
+   private:
+    // Appender集合
+    std::list<LogAppender::ptr> m_appenders;
+    // 日志名称
+    std::string m_name;
+    // 日志器的级别
+    LogLevel::Level m_level;
 };
 
 // 输出到控制台的Appender
 class StdoutLogAppender : public LogAppender {
-   private:
    public:
     StdoutLogAppender();
     ~StdoutLogAppender();
 
     typedef std::shared_ptr<StdoutLogAppender> ptr;
     virtual void log(LogLevel::Level level, LogEvent::ptr event) override;
+
+   private:
 };
 
 // 输出到文件的Appender
 class FileLogAppender : public LogAppender {
-   private:
    public:
     FileLogAppender();
     ~FileLogAppender();
