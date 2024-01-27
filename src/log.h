@@ -3,9 +3,12 @@
 
 #include <stdint.h>
 
-#include <memory>
-#include <string>
+#include <fstream>
+#include <iostream>
 #include <list>
+#include <memory>
+#include <sstream>
+#include <string>
 namespace myserver {
 
 // 日志事件
@@ -53,15 +56,19 @@ class LogFormatter {
 
 // 日志输出地
 class LogAppender {
-   private:
+   protected:
     // 针对哪些日志的等级
     LogLevel::Level m_level;
+    // 处理不同日志格式
+    LogFormatter::ptr m_formatter;
 
    public:
     typedef std::shared_ptr<LogAppender> ptr;
     LogAppender();
     virtual ~LogAppender();
-    void log(LogLevel::Level level, LogEvent::ptr event);
+    virtual void log(LogLevel::Level level, LogEvent::ptr event) = 0;
+    void setFormatter(LogFormatter::ptr val) { m_formatter = val; }
+    LogFormatter::ptr getFormatter() const { return m_formatter; }
 };
 
 // 日志输出器
@@ -91,8 +98,8 @@ class Logger {
 
     void addAppender(LogAppender::ptr appender);
     void delAppender(LogAppender::ptr appender);
-    LogLevel::Level getLevel() const { return m_level;}
-    void setLevel(LogLevel::Level val) { m_level = val;}
+    LogLevel::Level getLevel() const { return m_level; }
+    void setLevel(LogLevel::Level val) { m_level = val; }
 };
 
 // 输出到控制台的Appender
@@ -101,6 +108,9 @@ class StdoutLogAppender : public LogAppender {
    public:
     StdoutLogAppender();
     ~StdoutLogAppender();
+
+    typedef std::shared_ptr<StdoutLogAppender> ptr;
+    virtual void log(LogLevel::Level level, LogEvent::ptr event) override;
 };
 
 // 输出到文件的Appender
@@ -109,6 +119,16 @@ class FileLogAppender : public LogAppender {
    public:
     FileLogAppender();
     ~FileLogAppender();
+
+    typedef std::shared_ptr<FileLogAppender> ptr;
+    FileLogAppender(const std::string& filename);
+    virtual void log(LogLevel::Level level, LogEvent::ptr event) override;
+    // 文件的重复打开, 打开成功返回true
+    bool reopen();
+
+   private:
+    std::string m_filename;
+    std::ofstream m_filestream;
 };
 
 }  // namespace myserver
