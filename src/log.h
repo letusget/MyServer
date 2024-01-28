@@ -10,14 +10,36 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
+#define MYSERVER_LOG_LEVEL(logger, level)                                                                       \
+    if (logger->getLevel() <= level)                                                                            \
+    myserver::LogEventWrap(myserver::LogEvent::ptr(new myserver::LogEvent(logger, level, __FILE__, __LINE__, 0, myserver::GetThreadId(), \
+                                                                myserver::GetFiberId(), time(0))))              \
+        .getSS()
+
+#define MYSERVER_LOG_DEBUG(logger) MYSERVER_LOG_LEVEL(logger, myserver::LogLevel::DEBUG)
+#define MYSERVER_LOG_INFO(logger) MYSERVER_LOG_LEVEL(logger, myserver::LogLevel::INFO)
+#define MYSERVER_LOG_WARN(logger) MYSERVER_LOG_LEVEL(logger, myserver::LogLevel::WARN)
+#define MYSERVER_LOG_ERROR(logger) MYSERVER_LOG_LEVEL(logger, myserver::LogLevel::ERROR)
+#define MYSERVER_LOG_FATAL(logger) MYSERVER_LOG_LEVEL(logger, myserver::LogLevel::FATAL)
+
 namespace myserver {
 
 // 提前声明(否则在LogAppender中拿不到该类)
 class Logger;
+
+// 方便其他类确定日志等级
+class LogLevel {
+   public:
+    enum Level { UNKNOWN = 0, DEBUG = 1, INFO = 2, WARN = 3, ERROR = 4, FATAL = 5 };
+    static const char* ToString(LogLevel::Level level);
+};
+
 // 日志事件
 class LogEvent {
    public:
-    LogEvent(const char* file, int32_t line, uint32_t elapse, uint32_t thread_id, uint32_t fiber_id, uint64_t time);
+    LogEvent(std::shared_ptr<Logger> logger, LogLevel::Level level, const char* file, int32_t line, uint32_t elapse,
+             uint32_t thread_id, uint32_t fiber_id, uint64_t time);
     //  ~LogEvent();
 
     typedef std::shared_ptr<LogEvent> ptr;
@@ -29,8 +51,13 @@ class LogEvent {
     uint64_t getTime() const { return m_time; }
     const std::string getContent() const { return m_ss.str(); }
     std::stringstream& getSS() { return m_ss; }
+    std::shared_ptr<Logger> getLogger() const { return m_logger; }
+    LogLevel::Level getLevel() const { return m_level; }
+    void format(const char* fmt, ...);
 
    private:
+    std::shared_ptr<Logger> m_logger;
+    LogLevel::Level m_level;
     // 日志文件名
     const char* m_file = nullptr;
     // 日志行号
@@ -47,11 +74,15 @@ class LogEvent {
     std::stringstream m_ss;
 };
 
-// 方便其他类确定日志等级
-class LogLevel {
+// 实现LogEvent可以将自己析构时写入logger
+class LogEventWrap {
    public:
-    enum Level { UNKNOWN = 0, DEBUG = 1, INFO = 2, WARN = 3, ERROR = 4, FATAL = 5 };
-    static const char* ToString(LogLevel::Level level);
+    LogEventWrap(LogEvent::ptr e);
+    ~LogEventWrap();
+    std::stringstream& getSS();
+
+   private:
+    LogEvent::ptr m_event;
 };
 
 // 日志格式器

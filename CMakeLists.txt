@@ -14,7 +14,9 @@ include_directories(src)
 
 # 设置源文件
 set(LIB_SRC
-    src/log.cpp)
+    src/log.cpp
+    src/util.cpp
+    )
 
 # 创建共享库
 add_library(myserver SHARED ${LIB_SRC})

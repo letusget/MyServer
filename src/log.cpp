@@ -27,6 +27,16 @@ const char* LogLevel::ToString(LogLevel::Level level) {
     return "UNKNOWN";
 }
 
+LogEventWrap::LogEventWrap(LogEvent::ptr e) :m_event(e) {
+    
+}
+LogEventWrap::~LogEventWrap() {
+    m_event -> getLogger() -> log(m_event->getLevel(), m_event);
+}
+std::stringstream& LogEventWrap::getSS() {
+    return m_event->getSS();
+}
+
 // 线程ID
 class ThreadIdFormatItem : public LogFormatter::FormatItem {
    public:
@@ -144,13 +154,27 @@ class NewLineFormatItem : public LogFormatter::FormatItem {
     }
 };
 
-LogEvent::LogEvent(const char* file, int32_t line, uint32_t elapse, uint32_t thread_id, uint32_t fiber_id,
+// 文本
+class TabFormatItem : public LogFormatter::FormatItem {
+   public:
+    TabFormatItem(const std::string& str = "") : m_string(str) {}
+    virtual void format(std::ostream& os, Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) override {
+        os << "\t";
+    }
+
+   private:
+    std::string m_string;
+};
+
+LogEvent::LogEvent(std::shared_ptr<Logger> logger, LogLevel::Level level, const char* file, int32_t line, uint32_t elapse, uint32_t thread_id, uint32_t fiber_id,
                    uint64_t time)
-    : m_file(file), m_line(line), m_elapse(elapse), m_threadId(thread_id), m_fiberId(fiber_id), m_time(time) {}
+    : m_logger(logger), m_level(level), m_file(file), m_line(line), m_elapse(elapse), m_threadId(thread_id), m_fiberId(fiber_id), m_time(time) {}
 
 Logger::Logger(const std::string& name) : m_name(name), m_level(LogLevel::DEBUG) {
     // 定义常见日志格式
-    m_formatter.reset(new LogFormatter("%d  [%p]  < %f : %l >    %m  %n"));
+    // m_formatter.reset(new LogFormatter("%d  [%p]  < %f : %l >    %m  %n"));
+    // m_formatter.reset(new LogFormatter("%d{%Y-%m-%d %H:%M:%S}%T %t %T %F %T[%p]%T[%c]%T %f:%l %T %m%n"));
+    m_formatter.reset(new LogFormatter("%d%T%t %T%F%T[%p]%T[%c]%T%f:%l %T%m%n"));
 }
 
 // TODO
@@ -339,6 +363,7 @@ void LogFormatter::init() {
         XX("m", MessageFormatItem),  XX("p", LevelFormatItem),    XX("r", ElapseFormatItem),
         XX("c", NameFormatItem),     XX("t", ThreadIdFormatItem), XX("n", NewLineFormatItem),
         XX("d", DateTimeFormatItem), XX("f", FilenameFormatItem), XX("l", LineFormatItem),
+        XX("T", TabFormatItem),      XX("F", FiberIdFormatItem),
 #undef XX
     };
 
@@ -355,10 +380,10 @@ void LogFormatter::init() {
             }
         }
 
-        std::cout << "(" << std::get<0>(i) << ") - (" << std::get<1>(i) << ") - (" << std::get<2>(i) << ") \n";
+        // std::cout << "(" << std::get<0>(i) << ") - (" << std::get<1>(i) << ") - (" << std::get<2>(i) << ") \n";
     }
 
-    std::cout << m_items.size() << " ##\n";
+    // std::cout << m_items.size() << " ##\n";
 }
 
 }  // namespace myserver
