@@ -1,5 +1,6 @@
 #include "log.h"
 
+#include <stdarg.h>
 #include <string.h>
 #include <time.h>
 
@@ -27,15 +28,28 @@ const char* LogLevel::ToString(LogLevel::Level level) {
     return "UNKNOWN";
 }
 
-LogEventWrap::LogEventWrap(LogEvent::ptr e) :m_event(e) {
-    
+LogEventWrap::LogEventWrap(LogEvent::ptr e) : m_event(e) {}
+LogEventWrap::~LogEventWrap() { m_event->getLogger()->log(m_event->getLevel(), m_event); }
+
+void LogEvent::format(const char* fmt, ...) {
+    // 可变参数列表
+    va_list al;
+    va_start(al, fmt);  // 初始化
+    format(fmt, al);
+    va_end(al);  // 清理遍历参数列表
 }
-LogEventWrap::~LogEventWrap() {
-    m_event -> getLogger() -> log(m_event->getLevel(), m_event);
+
+void LogEvent::format(const char* fmt, va_list al) {
+    char* buf = nullptr;
+    // 动态分配足够的内存来存放格式化后的字符串
+    int len = vasprintf(&buf, fmt, al);
+    if (len != -1) {
+        // vasprintf格式化成功，添加到 m_ss
+        m_ss << std::string(buf, len);
+        free(buf);
+    }
 }
-std::stringstream& LogEventWrap::getSS() {
-    return m_event->getSS();
-}
+std::stringstream& LogEventWrap::getSS() { return m_event->getSS(); }
 
 // 线程ID
 class ThreadIdFormatItem : public LogFormatter::FormatItem {
@@ -166,9 +180,16 @@ class TabFormatItem : public LogFormatter::FormatItem {
     std::string m_string;
 };
 
-LogEvent::LogEvent(std::shared_ptr<Logger> logger, LogLevel::Level level, const char* file, int32_t line, uint32_t elapse, uint32_t thread_id, uint32_t fiber_id,
-                   uint64_t time)
-    : m_logger(logger), m_level(level), m_file(file), m_line(line), m_elapse(elapse), m_threadId(thread_id), m_fiberId(fiber_id), m_time(time) {}
+LogEvent::LogEvent(std::shared_ptr<Logger> logger, LogLevel::Level level, const char* file, int32_t line,
+                   uint32_t elapse, uint32_t thread_id, uint32_t fiber_id, uint64_t time)
+    : m_logger(logger),
+      m_level(level),
+      m_file(file),
+      m_line(line),
+      m_elapse(elapse),
+      m_threadId(thread_id),
+      m_fiberId(fiber_id),
+      m_time(time) {}
 
 Logger::Logger(const std::string& name) : m_name(name), m_level(LogLevel::DEBUG) {
     // 定义常见日志格式
@@ -215,7 +236,8 @@ void Logger::warn(LogEvent::ptr event) { log(LogLevel::WARN, event); }
 void Logger::error(LogEvent::ptr event) { log(LogLevel::ERROR, event); }
 void Logger::fatal(LogEvent::ptr event) { log(LogLevel::FATAL, event); }
 
-FileLogAppender::FileLogAppender(const std::string& filename) : m_filename(filename) {}
+// TODO reopen() 优化
+FileLogAppender::FileLogAppender(const std::string& filename) : m_filename(filename) { reopen(); }
 
 void FileLogAppender::log(Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) {
     if (level >= m_level) {
@@ -384,6 +406,17 @@ void LogFormatter::init() {
     }
 
     // std::cout << m_items.size() << " ##\n";
+}
+
+LoggerManager::LoggerManager() {
+    m_root.reset(new Logger);
+
+    m_root->addAppender(LogAppender::ptr(new StdoutLogAppender));
+}
+Logger::ptr LoggerManager::getLogger(const std::string& name) {
+    auto it = m_loggers.find(name);
+
+    return it == m_loggers.end() ? m_root : it->second;
 }
 
 }  // namespace myserver

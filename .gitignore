@@ -50,3 +50,6 @@ build/Makefile
 
 # VS Code directory
 .vscode/
+
+# local record
+*.txt
