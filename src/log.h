@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "singleton.h"
+#include "util.h"
 
 // 写入level级别的流式日志
 #define MYSERVER_LOG_LEVEL(logger, level)                                                                             \
@@ -57,6 +58,8 @@
 // 使用logger写入fatal级别的日志 (格式化, printf)
 #define MYSERVER_LOG_FMT_FATAL(logger, fmt, ...) \
     MYSERVER_LOG_FMT_LEVEL(logger, myserver::LogLevel::FATAL, fmt, __VA_ARGS__)
+
+#define MYSERVER_LOG_ROOT() myserver::LoggerMgr::GetInstance()->getRoot()
 
 namespace myserver {
 
@@ -241,6 +244,7 @@ class LoggerManager {
     LoggerManager();
     Logger::ptr getLogger(const std::string& name);
     void init();
+    Logger::ptr getRoot() const { return m_root; }
 
    private:
     std::map<std::string, Logger::ptr> m_loggers;

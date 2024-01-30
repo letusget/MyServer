@@ -198,10 +198,9 @@ Logger::Logger(const std::string& name) : m_name(name), m_level(LogLevel::DEBUG)
     m_formatter.reset(new LogFormatter("%d%T%t %T%F%T[%p]%T[%c]%T%f:%l %T%m%n"));
 }
 
+// 虚函数必须要提供定义
 // TODO
-LogAppender::~LogAppender() {
-    // 实现可以为空
-}
+LogAppender::~LogAppender() {}
 
 void Logger::addAppender(LogAppender::ptr appender) {
     if (!appender->getFormatter()) {

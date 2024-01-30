@@ -16,6 +16,7 @@ include_directories(src)
 set(LIB_SRC
     src/log.cpp
     src/util.cpp
+    src/config.cpp
     )
 
 # 创建共享库
@@ -23,9 +24,13 @@ add_library(myserver SHARED ${LIB_SRC})
 
 # 创建可执行文件
 add_executable(test tests/test.cpp)
-
 # 链接库
 target_link_libraries(test myserver)
+
+# 创建可执行文件
+add_executable(test_config tests/test_config.cpp)
+# 链接库
+target_link_libraries(test_config myserver)
 
 # 设置二进制和库的输出路径
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
