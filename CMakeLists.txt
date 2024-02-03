@@ -7,10 +7,12 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -rdynamic -O0 -g -Wall -Wno-deprecated -Werror -Wno-unused-function")
 
-# set(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -rdynamic -O3 -g -std=c++11 -Wall -Wno-deprecated -Werror -Wno-unused-function")
-
 # 添加 src 目录到包含路径
 include_directories(src)
+
+# 查找yaml-cpp库并设置必要的变量
+# 否则需要使用include_directories添加头文件， target_link_libraries来链接库
+find_package(yaml-cpp REQUIRED)
 
 # 设置源文件
 set(LIB_SRC
@@ -25,12 +27,12 @@ add_library(myserver SHARED ${LIB_SRC})
 # 创建可执行文件
 add_executable(test tests/test.cpp)
 # 链接库
-target_link_libraries(test myserver)
+target_link_libraries(test myserver yaml-cpp)
 
 # 创建可执行文件
 add_executable(test_config tests/test_config.cpp)
 # 链接库
-target_link_libraries(test_config myserver)
+target_link_libraries(test_config myserver yaml-cpp)
 
 # 设置二进制和库的输出路径
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
