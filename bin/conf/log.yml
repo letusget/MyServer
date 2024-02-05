@@ -13,4 +13,5 @@ logs:
           - type: FileLogAppender
             path:: log.txt
           - type:: StdoutLogAppender
+          
 
