@@ -35,10 +35,19 @@ void test_yaml() {
 
     print_yaml(root, 0);
 }
-int main(int argc, char** argv) {
-    MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << g_int_value_config->getValue();
-    MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << g_float_value_config->getValue();
 
-    test_yaml();
+void test_config() {
+    MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << "before: " << g_int_value_config->getValue();
+    MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << "before: " << g_float_value_config->getValue();
+
+    YAML::Node root = YAML::LoadFile("../bin/conf/log.yml");
+    myserver::Config::LoadFromYaml(root);
+
+    MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << "after: " << g_int_value_config->getValue();
+    MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << "after: " << g_float_value_config->getValue();
+}
+int main(int argc, char** argv) {
+    // test_yaml();
+    test_config();
     return 0;
 }

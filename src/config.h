@@ -1,6 +1,8 @@
 #ifndef __MYSERVER_CONFIG_H__
 #define __MYSERVER_CONFIG_H__
 
+#include <yaml-cpp/yaml.h>
+
 #include <boost/lexical_cast.hpp>
 #include <iostream>
 #include <memory>
@@ -14,8 +16,11 @@ namespace myserver {
 class ConfigVarBase {
    public:
     typedef std::shared_ptr<ConfigVarBase> ptr;
-    ConfigVarBase(const std::string& name, const std::string& description = "")
-        : m_name(name), m_description(description) {}
+    ConfigVarBase(const std::string& name, const std::string& description = "") : m_description(description) {
+        m_name.reserve(name.size());
+        std::transform(name.begin(), name.end(), std::back_inserter(m_name),
+                       [](unsigned char c) -> char { return std::tolower(c); });
+    }
     virtual ~ConfigVarBase();
 
     const std::string& getName() const { return m_name; }
@@ -81,9 +86,8 @@ class Config {
             return tmp;
         }
 
-        // 检查是否有非法字符
-        if (name.find_first_not_of("abcdefghiJklmnopqrstuvwxyzABCDEFGHIJkLMNOPQRSTUVWXYZ._0123456789") !=
-            std::string::npos) {
+        // 检查是否有非法字符(这里只判断小写，如果有大写就强制改为小写字母)
+        if (name.find_first_not_of("abcdefghiJklmnopqrstuvwxyz._0123456789") != std::string::npos) {
             MYSERVER_LOG_ERROR(MYSERVER_LOG_ROOT()) << "Lookup name invalid " << name;
             throw std::invalid_argument(name);
         }
@@ -105,6 +109,11 @@ class Config {
         return std::dynamic_pointer_cast<ConfigVar<T> >(
             it->second);  // C++11之前 >> 会被解析成右移运算符，所以在模板下需要使用空格区分
     }
+
+    // 使用yaml中的配置覆盖原有配置
+    static void LoadFromYaml(const YAML::Node& root);
+    // 这里只能返回指针或引用(ConfigVarBase为抽象类)返回
+    static ConfigVarBase::ptr LookupBase(const std::string& name);
 
    private:
     static ConfigVarMap s_datas;
