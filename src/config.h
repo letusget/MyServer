@@ -36,7 +36,17 @@ class ConfigVarBase {
     std::string m_description;
 };
 
-template <class T>
+// 通用的基础类型解析
+template <class F, class T>  // F from_type, T to_type
+class LexicalCast {
+   public:
+    T operator()(const F& v) { return boost::lexical_cast<T>(v); }
+};
+// 将任何str转换成对应类型以及将任意类型转换为str(序列号与反序列化)
+// FromStr T operator()(const std::string&) // 反序列化
+// Tostr std::string operator()(const T&)   // 序列号
+template <class T, class FromStr = LexicalCast<std::string, T>,
+          class ToStr = LexicalCast<T, std::string>>  // 特化的类型转换
 class ConfigVar : public ConfigVarBase {
    public:
     typedef std::shared_ptr<ConfigVar> ptr;
@@ -46,7 +56,8 @@ class ConfigVar : public ConfigVarBase {
     std::string toString() override {
         // 类型转换可能会有异常安全问题
         try {
-            boost::lexical_cast<std::string>(m_val);
+            // return boost::lexical_cast<std::string>(m_val);
+            return ToStr()(m_val);
         } catch (std::exception& e) {
             MYSERVER_LOG_ERROR(MYSERVER_LOG_ROOT())
                 << "ConfigVar::toString exception" << e.what() << "convert: " << typeid(m_val).name() << " to string";
@@ -57,7 +68,8 @@ class ConfigVar : public ConfigVarBase {
     bool fromString(const std::string& val) override {
         // 类型转换可能会有异常安全问题
         try {
-            m_val = boost::lexical_cast<T>(val);
+            // m_val = boost::lexical_cast<T>(val);
+            setValue(FromStr()(val));
         } catch (std::exception& e) {
             MYSERVER_LOG_ERROR(MYSERVER_LOG_ROOT())
                 << "ConfigVar::toString exception" << e.what() << "convert: string to" << typeid(m_val).name();
@@ -106,7 +118,7 @@ class Config {
             return nullptr;
         }
         // 强制将父类转为子类(只能对于shared_ptr使用)
-        return std::dynamic_pointer_cast<ConfigVar<T> >(
+        return std::dynamic_pointer_cast<ConfigVar<T>>(
             it->second);  // C++11之前 >> 会被解析成右移运算符，所以在模板下需要使用空格区分
     }
 
