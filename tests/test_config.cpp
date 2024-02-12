@@ -5,6 +5,8 @@
 myserver::ConfigVar<int>::ptr g_int_value_config = myserver::Config::Lookup("system.port", (int)8080, "system port");
 myserver::ConfigVar<float>::ptr g_float_value_config =
     myserver::Config::Lookup("system.value", (float)6.16f, "system value");
+myserver::ConfigVar<std::vector<int>>::ptr g_int_vector_value_config =
+    myserver::Config::Lookup("system.int_vec", std::vector<int>{1, 2}, "system int vec");
 
 void print_yaml(const YAML::Node& node, int level) {
     if (node.IsScalar()) {
@@ -39,12 +41,21 @@ void test_yaml() {
 void test_config() {
     MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << "before: " << g_int_value_config->getValue();
     MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << "before: " << g_float_value_config->getValue();
+    auto v = g_int_vector_value_config->getValue();
+    for (auto& i : v) {
+        MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << "before int_vec: " << i;
+    }
 
     YAML::Node root = YAML::LoadFile("../bin/conf/log.yml");
     myserver::Config::LoadFromYaml(root);
 
     MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << "after: " << g_int_value_config->getValue();
     MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << "after: " << g_float_value_config->getValue();
+
+    v = g_int_vector_value_config->getValue();
+    for (auto& i : v) {
+        MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << "after: int_vec: " << i;
+    }
 }
 int main(int argc, char** argv) {
     // test_yaml();
