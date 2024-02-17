@@ -34,3 +34,34 @@ system:
     k2: 150
     k3: 170
 
+class:
+  person:
+    name: william
+    age: 23
+    sex: true
+  map: 
+    william1:
+      name: william01
+      age: 21
+      sex: false
+    william2:
+      name: william02
+      age: 22
+      sex: true
+  vec_map:
+    k1:
+      - name: m1
+        age: 32
+        sex: true
+      - name: m2
+        age: 33
+        sex: false
+    k2:
+      - name: m11
+        age: 32
+        sex: true
+      - name: m22
+        age: 33
+        sex: false
+
+

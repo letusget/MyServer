@@ -279,7 +279,7 @@ class ConfigVar : public ConfigVarBase {
             setValue(FromStr()(val));
         } catch (std::exception& e) {
             MYSERVER_LOG_ERROR(MYSERVER_LOG_ROOT())
-                << "ConfigVar::toString exception" << e.what() << "convert: string to" << typeid(m_val).name();
+                << "ConfigVar::toString exception" << e.what() << "convert: string to" << typeid(m_val).name() << " - " << val;
         }
         return false;
     }

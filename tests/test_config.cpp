@@ -6,7 +6,7 @@ myserver::ConfigVar<int>::ptr g_int_value_config = myserver::Config::Lookup("sys
 // 同样数据的不同类型会报错
 myserver::ConfigVar<float>::ptr g_float_valuex_config =
     myserver::Config::Lookup("system.port", (float)8080, "system port");
-    
+
 myserver::ConfigVar<float>::ptr g_float_value_config =
     myserver::Config::Lookup("system.value", (float)6.16f, "system value");
 myserver::ConfigVar<std::vector<int>>::ptr g_int_vector_value_config =
@@ -94,8 +94,98 @@ void test_config() {
     XX_M(g_str_int_map_value_config, str_int_map, after);
     XX_M(g_str_int_umap_value_config, str_int_umap, after);
 }
+
+class Person {
+   public:
+    Person(){};
+    std::string getName() const { return m_name; }
+    int getAge() const { return m_age; }
+    bool getSex() const { return m_sex; }
+    void setName(const std::string& name) { m_name = name; }
+    void setAge(int age) { m_age = age; }
+    void setSex(bool sex) { m_sex = sex; }
+
+    std::string toString() const {
+        std::stringstream ss;
+        ss << "[ Person name = " << m_name << ", age = " << m_age << ", sex = " << m_sex << " ]";
+        return ss.str();
+    }
+
+   private:
+    std::string m_name = "";
+    int m_age          = 0;
+    bool m_sex         = false;
+};
+
+namespace myserver {
+// 模板偏特化
+// class 反序列化
+template <>
+class LexicalCast<std::string, Person> {
+   public:
+    Person operator()(const std::string& v) {
+        YAML::Node node = YAML::Load(v);
+        Person p;
+        p.setName(node["name"].as<std::string>());
+        p.setAge(node["age"].as<int>());
+        p.setSex(node["sex"].as<bool>());
+        return p;
+    }
+};
+// class 序列化
+template <>
+class LexicalCast<Person, std::string> {
+   public:
+    std::string operator()(const Person& p) {
+        YAML::Node node;
+        node["name"] = p.getName();
+        node["age"]  = p.getAge();
+        node["sex"]  = p.getSex();
+        std::stringstream ss;
+        ss << node;
+        return ss.str();
+    }
+};
+}  // namespace myserver
+myserver::ConfigVar<Person>::ptr g_person = myserver::Config::Lookup("class.person", Person(), "system person");
+
+// map
+myserver::ConfigVar<std::map<std::string, Person>>::ptr g_person_map =
+    myserver::Config::Lookup("class.map", std::map<std::string, Person>(), "system person");
+
+// vector-map
+myserver::ConfigVar<std::map<std::string, std::vector<Person>>>::ptr g_person_vec_map =
+    myserver::Config::Lookup("class.vec_map", std::map<std::string, std::vector<Person>>(), "system person");
+
+void test_class() {
+    MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT())
+        << "before: " << g_person->getValue().toString() << " - " << g_person->toString();
+#define XX_PM(g_var, prefix)                                                                                     \
+    {                                                                                                            \
+        auto m = g_var->getValue();                                                                              \
+        for (auto& i : m) {                                                                                      \
+            MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << prefix << ": " << i.first << " - " << i.second.toString(); \
+        }                                                                                                        \
+        MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << prefix << ": size=" << m.size();                               \
+    }
+    XX_PM(g_person_map, "class.map before");
+    MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << "before: " << g_person_vec_map->toString();
+
+    YAML::Node root = YAML::LoadFile("../bin/conf/log.yml");
+    myserver::Config::LoadFromYaml(root);
+
+    MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT())
+        << "after: " << g_person->getValue().toString() << " - " << g_person->toString();
+    XX_PM(g_person_map, "class.map after");
+
+    MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << "after: " << g_person_vec_map->toString();
+
+}
+
 int main(int argc, char** argv) {
     // test_yaml();
-    test_config();
+    // test_config();
+    test_class();
+
     return 0;
 }
