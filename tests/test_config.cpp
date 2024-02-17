@@ -110,6 +110,9 @@ class Person {
         ss << "[ Person name = " << m_name << ", age = " << m_age << ", sex = " << m_sex << " ]";
         return ss.str();
     }
+    bool operator==(const Person& oth) const {
+        return m_name == oth.getName() && m_age == oth.getAge() && m_sex == oth.getSex();
+    }
 
    private:
     std::string m_name = "";
@@ -168,6 +171,12 @@ void test_class() {
         }                                                                                                        \
         MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << prefix << ": size=" << m.size();                               \
     }
+
+    g_person->addListener(10, [](const Person& old_value, const Person& new_value) {
+        MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT())
+            << "old_value = " << old_value.toString() << " - new_value = " << new_value.toString();
+    });
+
     XX_PM(g_person_map, "class.map before");
     MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << "before: " << g_person_vec_map->toString();
 
@@ -179,7 +188,6 @@ void test_class() {
     XX_PM(g_person_map, "class.map after");
 
     MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << "after: " << g_person_vec_map->toString();
-
 }
 
 int main(int argc, char** argv) {

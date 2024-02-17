@@ -4,6 +4,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include <boost/lexical_cast.hpp>
+#include <functional>
 #include <iostream>
 #include <list>
 #include <map>
@@ -38,6 +39,7 @@ class ConfigVarBase {
     virtual bool fromString(const std::string& val) = 0;
     // 获取类型
     virtual std::string getTypeName() const = 0;
+
    protected:
     std::string m_name;
     std::string m_description;
@@ -257,6 +259,9 @@ template <class T, class FromStr = LexicalCast<std::string, T>,
 class ConfigVar : public ConfigVarBase {
    public:
     typedef std::shared_ptr<ConfigVar> ptr;
+    // 事件回调
+    typedef std::function<void(const T& old_value, const T& new_value)> on_change_cb;
+
     ConfigVar(const std::string& name, const T& default_value, const std::string& description = "")
         : ConfigVarBase(name, description), m_val(default_value) {}
 
@@ -278,18 +283,40 @@ class ConfigVar : public ConfigVarBase {
             // m_val = boost::lexical_cast<T>(val);
             setValue(FromStr()(val));
         } catch (std::exception& e) {
-            MYSERVER_LOG_ERROR(MYSERVER_LOG_ROOT())
-                << "ConfigVar::toString exception" << e.what() << "convert: string to" << typeid(m_val).name() << " - " << val;
+            MYSERVER_LOG_ERROR(MYSERVER_LOG_ROOT()) << "ConfigVar::toString exception" << e.what()
+                                                    << "convert: string to" << typeid(m_val).name() << " - " << val;
         }
         return false;
     }
 
     const T getValue() const { return m_val; }
-    void setValue(const T& v) { m_val = v; }
+    void setValue(const T& v) {
+        // 没有发生变化的情况
+        if (v == m_val) {
+            return;
+        }
+        for (auto& i : m_cbs) {
+            i.second(m_val, v);
+            
+        }
+        m_val = v;
+    }
     std::string getTypeName() const override { return typeid(T).name(); }
+
+    void addListener(uint64_t key, on_change_cb cb) { m_cbs[key] = cb; }
+    void delListener(uint64_t key, on_change_cb) { m_cbs.erase(key); }
+    on_change_cb getListener(uint64_t key) {
+        auto it = m_cbs.find(key);
+        return it == m_cbs.end() ? nullptr : it->second;
+    }
+    void clearListener() {
+        m_cbs.clear();
+    }
 
    private:
     T m_val;
+    // 变更回调函数组 key要求唯一，一般使用hash
+    std::map<uint64_t, on_change_cb> m_cbs;
 };
 
 class Config {
