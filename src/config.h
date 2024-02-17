@@ -5,15 +5,15 @@
 
 #include <boost/lexical_cast.hpp>
 #include <iostream>
+#include <list>
+#include <map>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
-#include <vector>
-#include <map>
-#include <set>
 #include <unordered_map>
 #include <unordered_set>
-#include <list>
+#include <vector>
 
 #include "log.h"
 
@@ -36,7 +36,8 @@ class ConfigVarBase {
     virtual std::string toString() = 0;
     // 解析参数
     virtual bool fromString(const std::string& val) = 0;
-
+    // 获取类型
+    virtual std::string getTypeName() const = 0;
    protected:
     std::string m_name;
     std::string m_description;
@@ -63,7 +64,9 @@ class LexicalCast<std::string, std::vector<T>> {
             ss << node[i];
             vec.push_back(LexicalCast<std::string, T>()(ss.str()));
         }
-        return std::move(vec);
+        // C++17支持的返回值优化，允许在调用者的空间内直接构造返回对象，不需要强制move进行移动
+        // return std::move(vec);
+        return vec;
     }
 };
 // vector 序列化
@@ -82,7 +85,7 @@ class LexicalCast<std::vector<T>, std::string> {
 };
 
 // list 反序列化
-template<class T>
+template <class T>
 class LexicalCast<std::string, std::list<T>> {
    public:
     std::list<T> operator()(const std::string& v) {
@@ -94,7 +97,9 @@ class LexicalCast<std::string, std::list<T>> {
             ss << node[i];
             vec.push_back(LexicalCast<std::string, T>()(ss.str()));
         }
-        return std::move(vec);
+        // C++17支持的返回值优化，允许在调用者的空间内直接构造返回对象，不需要强制move进行移动
+        // return std::move(vec);
+        return vec;
     }
 };
 // list 序列化
@@ -113,7 +118,7 @@ class LexicalCast<std::list<T>, std::string> {
 };
 
 // set 反序列化
-template<class T>
+template <class T>
 class LexicalCast<std::string, std::set<T>> {
    public:
     std::set<T> operator()(const std::string& v) {
@@ -125,7 +130,9 @@ class LexicalCast<std::string, std::set<T>> {
             ss << node[i];
             vec.insert(LexicalCast<std::string, T>()(ss.str()));
         }
-        return std::move(vec);
+        // C++17支持的返回值优化，允许在调用者的空间内直接构造返回对象，不需要强制move进行移动
+        // return std::move(vec);
+        return vec;
     }
 };
 // set 序列化
@@ -144,7 +151,7 @@ class LexicalCast<std::set<T>, std::string> {
 };
 
 // unordered_set 反序列化
-template<class T>
+template <class T>
 class LexicalCast<std::string, std::unordered_set<T>> {
    public:
     std::unordered_set<T> operator()(const std::string& v) {
@@ -156,7 +163,9 @@ class LexicalCast<std::string, std::unordered_set<T>> {
             ss << node[i];
             vec.insert(LexicalCast<std::string, T>()(ss.str()));
         }
-        return std::move(vec);
+        // C++17支持的返回值优化，允许在调用者的空间内直接构造返回对象，不需要强制move进行移动
+        // return std::move(vec);
+        return vec;
     }
 };
 // unordered_set 序列化
@@ -175,7 +184,7 @@ class LexicalCast<std::unordered_set<T>, std::string> {
 };
 
 // map 反序列化
-template<class T>
+template <class T>
 class LexicalCast<std::string, std::map<std::string, T>> {
    public:
     std::map<std::string, T> operator()(const std::string& v) {
@@ -187,7 +196,9 @@ class LexicalCast<std::string, std::map<std::string, T>> {
             ss << it->second;
             vec.insert(std::make_pair(it->first.Scalar(), LexicalCast<std::string, T>()(ss.str())));
         }
-        return std::move(vec);
+        // C++17支持的返回值优化，允许在调用者的空间内直接构造返回对象，不需要强制move进行移动
+        // return std::move(vec);
+        return vec;
     }
 };
 // map 序列化
@@ -206,7 +217,7 @@ class LexicalCast<std::map<std::string, T>, std::string> {
 };
 
 // unordered_map 反序列化
-template<class T>
+template <class T>
 class LexicalCast<std::string, std::unordered_map<std::string, T>> {
    public:
     std::unordered_map<std::string, T> operator()(const std::string& v) {
@@ -218,7 +229,9 @@ class LexicalCast<std::string, std::unordered_map<std::string, T>> {
             ss << it->second;
             vec.insert(std::make_pair(it->first.Scalar(), LexicalCast<std::string, T>()(ss.str())));
         }
-        return std::move(vec);
+        // C++17支持的返回值优化，允许在调用者的空间内直接构造返回对象，不需要强制move进行移动
+        // return std::move(vec);
+        return vec;
     }
 };
 // unordered_map 序列化
@@ -273,6 +286,7 @@ class ConfigVar : public ConfigVarBase {
 
     const T getValue() const { return m_val; }
     void setValue(const T& v) { m_val = v; }
+    std::string getTypeName() const override { return typeid(T).name(); }
 
    private:
     T m_val;
@@ -286,11 +300,24 @@ class Config {
     // 这里的typename用于向编译器强调这是类型，因为有情况下 :: 后面是变量名
     static typename ConfigVar<T>::ptr Lookup(const std::string& name, const T& default_value,
                                              const std::string& description = "") {
-        auto tmp = Lookup<T>(name);
-        if (tmp) {
-            MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << "Lookup name = " << name << " exists";
-            return tmp;
+        auto it = s_datas.find(name);
+        if (it != s_datas.end()) {
+            auto tmp = std::dynamic_pointer_cast<ConfigVar<T>>(it->second);
+            if (tmp) {
+                MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << "Lookup name = " << name << " exists";
+                return tmp;
+            } else {
+                MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT())
+                    << "Lookup name = " << name << " exists but type not " << typeid(T).name()
+                    << " real_type = " << it->second->getTypeName() << " " << it->second->toString();
+                return nullptr;
+            }
         }
+        // auto tmp = Lookup<T>(name);
+        // if (tmp) {
+        // MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << "Lookup name = " << name << " exists";
+        // return tmp;
+        // }
 
         // 检查是否有非法字符(这里只判断小写，如果有大写就强制改为小写字母)
         if (name.find_first_not_of("abcdefghiJklmnopqrstuvwxyz._0123456789") != std::string::npos) {

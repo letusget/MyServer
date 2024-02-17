@@ -3,6 +3,10 @@
 #include "config.h"
 
 myserver::ConfigVar<int>::ptr g_int_value_config = myserver::Config::Lookup("system.port", (int)8080, "system port");
+// 同样数据的不同类型会报错
+myserver::ConfigVar<float>::ptr g_float_valuex_config =
+    myserver::Config::Lookup("system.port", (float)8080, "system port");
+    
 myserver::ConfigVar<float>::ptr g_float_value_config =
     myserver::Config::Lookup("system.value", (float)6.16f, "system value");
 myserver::ConfigVar<std::vector<int>>::ptr g_int_vector_value_config =
@@ -13,10 +17,10 @@ myserver::ConfigVar<std::set<int>>::ptr g_int_set_value_config =
     myserver::Config::Lookup("system.int_set", std::set<int>{1, 2}, "system int set");
 myserver::ConfigVar<std::unordered_set<int>>::ptr g_int_uset_value_config =
     myserver::Config::Lookup("system.int_uset", std::unordered_set<int>{1, 2}, "system int unordered_set");
-myserver::ConfigVar<std::map<std::string, int>>::ptr g_str_int_map_value_config =
-    myserver::Config::Lookup("system.str_int_map", std::map<std::string, int>{{"k1", 1}, {"k2", 2}}, "system str int map");
-myserver::ConfigVar<std::unordered_map<std::string, int>>::ptr g_str_int_umap_value_config =
-    myserver::Config::Lookup("system.str_int_umap", std::unordered_map<std::string, int>{{"k1", 1}, {"k2", 2}}, "system str int unordered_map");
+myserver::ConfigVar<std::map<std::string, int>>::ptr g_str_int_map_value_config = myserver::Config::Lookup(
+    "system.str_int_map", std::map<std::string, int>{{"k1", 1}, {"k2", 2}}, "system str int map");
+myserver::ConfigVar<std::unordered_map<std::string, int>>::ptr g_str_int_umap_value_config = myserver::Config::Lookup(
+    "system.str_int_umap", std::unordered_map<std::string, int>{{"k1", 1}, {"k2", 2}}, "system str int unordered_map");
 
 void print_yaml(const YAML::Node& node, int level) {
     if (node.IsScalar()) {
