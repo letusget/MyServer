@@ -46,7 +46,7 @@ void print_yaml(const YAML::Node& node, int level) {
 
 void test_yaml() {
     // 对于系统自启程序，如果程序CWD(当前工作目录)目录不是期望的目录，可能会存在相对路径错误的情况
-    YAML::Node root = YAML::LoadFile("../bin/conf/log.yml");
+    YAML::Node root = YAML::LoadFile("../bin/conf/test.yml");
     // MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << "\n" << root;
 
     print_yaml(root, 0);
@@ -81,7 +81,7 @@ void test_config() {
     XX_M(g_str_int_map_value_config, str_int_map, before);
     XX_M(g_str_int_umap_value_config, str_int_umap, before);
 
-    YAML::Node root = YAML::LoadFile("../bin/conf/log.yml");
+    YAML::Node root = YAML::LoadFile("../bin/conf/test.yml");
     mylog::Config::LoadFromYaml(root);
 
     MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << "after: " << g_int_value_config->getValue();
@@ -180,7 +180,7 @@ void test_class() {
     XX_PM(g_person_map, "class.map before");
     MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << "before: " << g_person_vec_map->toString();
 
-    YAML::Node root = YAML::LoadFile("../bin/conf/log.yml");
+    YAML::Node root = YAML::LoadFile("../bin/conf/test.yml");
     mylog::Config::LoadFromYaml(root);
 
     MYLOG_LOG_INFO(MYLOG_LOG_ROOT())

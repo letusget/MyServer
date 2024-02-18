@@ -7,6 +7,8 @@
 #include <functional>
 #include <map>
 
+#include "config.h"
+
 namespace mylog {
 
 // 使用宏来减少重复, 输出日志级别
@@ -125,7 +127,8 @@ class NameFormatItem : public LogFormatter::FormatItem {
    public:
     NameFormatItem(const std::string& str = "") {}
     virtual void format(std::ostream& os, Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) override {
-        os << logger->getName();
+        // os << logger->getName();
+        os << event->getLogger()->getName();
     }
 };
 
@@ -222,8 +225,12 @@ void Logger::log(LogLevel::Level level, LogEvent::ptr event) {
     if (level >= m_level) {
         // 获得指向自己的指针
         auto self = shared_from_this();
-        for (auto& i : m_appenders) {
-            i->log(self, level, event);
+        if (!m_appenders.empty()) {
+            for (auto& i : m_appenders) {
+                i->log(self, level, event);
+            }
+        } else if (m_root) {
+            m_root->log(level, event);
         }
     }
 }
@@ -411,11 +418,79 @@ LoggerManager::LoggerManager() {
     m_root.reset(new Logger);
 
     m_root->addAppender(LogAppender::ptr(new StdoutLogAppender));
+
+    init();
 }
 Logger::ptr LoggerManager::getLogger(const std::string& name) {
     auto it = m_loggers.find(name);
-
-    return it == m_loggers.end() ? m_root : it->second;
+    if (it != m_loggers.end()) {
+        return it->second;
+    }
+    Logger::ptr logger(new Logger(name));
+    logger->m_root  = m_root;
+    m_loggers[name] = logger;
+    return logger;
 }
+
+struct LogAppenderDefine {
+    // 1 File; 2 Stdout
+    int type              = 0;
+    LogLevel::Level level = LogLevel::UNKNOWN;
+    std::string formatter;
+    std::string file;
+
+    bool operator==(const LogAppenderDefine& oth) const {
+        return type == oth.type && level == oth.level && formatter == oth.formatter && file == oth.file;
+    }
+};
+struct LogDefine {
+    std::string name;
+    LogLevel::Level level = LogLevel::UNKNOWN;
+    std::string formatter;
+    std::vector<LogAppenderDefine> appenders;
+
+    bool operator==(const LogDefine& oth) const {
+        return name == oth.name && level == oth.level && formatter == oth.formatter && appenders == oth.appenders;
+    }
+
+    bool operator<(const LogDefine& oth) const { return name < oth.name; }
+};
+
+mylog::ConfigVar<std::set<LogDefine>> g_log_defines =
+    mylog::Config::Lookup("logs", std::set<LogDefine>(), "logs config");
+
+struct LogIniter {
+    LogIniter() {
+        g_log_defines->addListener(0xF1E231,
+                                   [](const std::set<LogDefine>& old_value, const std::set<LogDefine>& new_value) {
+                                    // 只有三种情况：新增、修改、擅长
+                                    // 新增
+                                    for(auto& i:new_value) {
+                                        auto it = old_value.find(i);
+                                        if(it == old_value.end()) {
+                                            // 新增logger
+
+                                        } else {
+                                            // 是否更新(发生变化)
+                                            if(!(i == *it)) {
+                                                // 修改旧的logger
+                                            }
+                                        }
+                                    }
+
+                                    // 删除
+                                    for(auto& i:old_value) {
+                                        auto it = new_value.find(i);
+                                        if(it == new_value.end()) {
+                                            // 删除旧的
+                                        }
+                                    }
+                                   });
+    }
+};
+// 全局对象在main之前构造执行
+static LogIniter __log_init;
+
+void LoggerManager::init() {}
 
 }  // namespace mylog
