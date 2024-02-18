@@ -1,5 +1,5 @@
-#ifndef __MYSERVER_CONFIG_H__
-#define __MYSERVER_CONFIG_H__
+#ifndef __MYLOG_CONFIG_H__
+#define __MYLOG_CONFIG_H__
 
 #include <yaml-cpp/yaml.h>
 
@@ -18,7 +18,7 @@
 
 #include "log.h"
 
-namespace myserver {
+namespace mylog {
 // 配置基类
 class ConfigVarBase {
    public:
@@ -271,7 +271,7 @@ class ConfigVar : public ConfigVarBase {
             // return boost::lexical_cast<std::string>(m_val);
             return ToStr()(m_val);
         } catch (std::exception& e) {
-            MYSERVER_LOG_ERROR(MYSERVER_LOG_ROOT())
+            MYLOG_LOG_ERROR(MYLOG_LOG_ROOT())
                 << "ConfigVar::toString exception" << e.what() << "convert: " << typeid(m_val).name() << " to string";
         }
         return "";
@@ -283,7 +283,7 @@ class ConfigVar : public ConfigVarBase {
             // m_val = boost::lexical_cast<T>(val);
             setValue(FromStr()(val));
         } catch (std::exception& e) {
-            MYSERVER_LOG_ERROR(MYSERVER_LOG_ROOT()) << "ConfigVar::toString exception" << e.what()
+            MYLOG_LOG_ERROR(MYLOG_LOG_ROOT()) << "ConfigVar::toString exception" << e.what()
                                                     << "convert: string to" << typeid(m_val).name() << " - " << val;
         }
         return false;
@@ -331,10 +331,10 @@ class Config {
         if (it != s_datas.end()) {
             auto tmp = std::dynamic_pointer_cast<ConfigVar<T>>(it->second);
             if (tmp) {
-                MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << "Lookup name = " << name << " exists";
+                MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << "Lookup name = " << name << " exists";
                 return tmp;
             } else {
-                MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT())
+                MYLOG_LOG_INFO(MYLOG_LOG_ROOT())
                     << "Lookup name = " << name << " exists but type not " << typeid(T).name()
                     << " real_type = " << it->second->getTypeName() << " " << it->second->toString();
                 return nullptr;
@@ -342,13 +342,13 @@ class Config {
         }
         // auto tmp = Lookup<T>(name);
         // if (tmp) {
-        // MYSERVER_LOG_INFO(MYSERVER_LOG_ROOT()) << "Lookup name = " << name << " exists";
+        // MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << "Lookup name = " << name << " exists";
         // return tmp;
         // }
 
         // 检查是否有非法字符(这里只判断小写，如果有大写就强制改为小写字母)
         if (name.find_first_not_of("abcdefghiJklmnopqrstuvwxyz._0123456789") != std::string::npos) {
-            MYSERVER_LOG_ERROR(MYSERVER_LOG_ROOT()) << "Lookup name invalid " << name;
+            MYLOG_LOG_ERROR(MYLOG_LOG_ROOT()) << "Lookup name invalid " << name;
             throw std::invalid_argument(name);
         }
 
@@ -379,6 +379,6 @@ class Config {
     static ConfigVarMap s_datas;
 };
 
-}  // namespace myserver
+}  // namespace mylog
 
 #endif

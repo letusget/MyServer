@@ -1,7 +1,7 @@
-#ifndef __MYSERVER_SINGLETON_H__
-#define __MYSERVER_SINGLETON_H__
+#ifndef __MYLOG_SINGLETON_H__
+#define __MYLOG_SINGLETON_H__
 
-namespace myserver {
+namespace mylog {
 
 template <class T, class X = void, int N = 0>
 class Singleton {
@@ -21,6 +21,6 @@ class SingletonPtr {
     }
 };
 
-}  // namespace myserver
+}  // namespace mylog
 
 #endif

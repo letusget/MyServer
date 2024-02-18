@@ -8,31 +8,31 @@
 #include "util.h"
 
 int main(int argc, char** argv) {
-    myserver::Logger::ptr logger(new myserver::Logger);
-    logger->addAppender(myserver::LogAppender::ptr(new myserver::StdoutLogAppender));
+    mylog::Logger::ptr logger(new mylog::Logger);
+    logger->addAppender(mylog::LogAppender::ptr(new mylog::StdoutLogAppender));
 
-    myserver::FileLogAppender::ptr file_appender(new myserver::FileLogAppender("./log.txt"));
+    mylog::FileLogAppender::ptr file_appender(new mylog::FileLogAppender("./log.txt"));
 
-    myserver::LogFormatter::ptr fmt(new myserver::LogFormatter("%d %T %p %T %m%n"));
+    mylog::LogFormatter::ptr fmt(new mylog::LogFormatter("%d %T %p %T %m%n"));
     file_appender->setFormatter(fmt);
-    file_appender->setLevel(myserver::LogLevel::ERROR);
+    file_appender->setLevel(mylog::LogLevel::ERROR);
     logger->addAppender(file_appender);
 
-    // myserver::LogEvent::ptr event(
-    //     new myserver::LogEvent(__FILE__, __LINE__, 0, myserver::GetThreadId(), myserver::GetFiberId(), time(0)));
-    // event->getSS() << "hello myserver log";
-    // logger->log(myserver::LogLevel::DEBUG, event);
+    // mylog::LogEvent::ptr event(
+    //     new mylog::LogEvent(__FILE__, __LINE__, 0, mylog::GetThreadId(), mylog::GetFiberId(), time(0)));
+    // event->getSS() << "hello mylog log";
+    // logger->log(mylog::LogLevel::DEBUG, event);
 
-    std::cout << "hello myserver log!"
+    std::cout << "hello mylog log!"
               << "\n";
 
-    MYSERVER_LOG_INFO(logger) << "test info log";
-    MYSERVER_LOG_DEBUG(logger) << "test debug log";
+    MYLOG_LOG_INFO(logger) << "test info log";
+    MYLOG_LOG_DEBUG(logger) << "test debug log";
 
-    MYSERVER_LOG_FMT_ERROR(logger, "test error fmt log %s", "hello");
+    MYLOG_LOG_FMT_ERROR(logger, "test error fmt log %s", "hello");
 
-    auto tt = myserver::LoggerMgr::GetInstance()->getLogger("xx");
-    MYSERVER_LOG_INFO(tt) << "xxxx";
+    auto tt = mylog::LoggerMgr::GetInstance()->getLogger("xx");
+    MYLOG_LOG_INFO(tt) << "xxxx";
 
     return 0;
 }

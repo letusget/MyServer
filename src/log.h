@@ -1,5 +1,5 @@
-#ifndef __MYSERVER_LOG_H_
-#define __MYSERVER_LOG_H_
+#ifndef __MYLOG_LOG_H_
+#define __MYLOG_LOG_H_
 
 #include <stdint.h>
 
@@ -16,52 +16,52 @@
 #include "util.h"
 
 // 写入level级别的流式日志
-#define MYSERVER_LOG_LEVEL(logger, level)                                                                             \
+#define MYLOG_LOG_LEVEL(logger, level)                                                                             \
     if (logger->getLevel() <= level)                                                                                  \
-    myserver::LogEventWrap(                                                                                           \
-        myserver::LogEvent::ptr(new myserver::LogEvent(logger, level, __FILE__, __LINE__, 0, myserver::GetThreadId(), \
-                                                       myserver::GetFiberId(), time(0))))                             \
+    mylog::LogEventWrap(                                                                                           \
+        mylog::LogEvent::ptr(new mylog::LogEvent(logger, level, __FILE__, __LINE__, 0, mylog::GetThreadId(), \
+                                                       mylog::GetFiberId(), time(0))))                             \
         .getSS()
 
 // 使用logger写入debug级别的流式日志
-#define MYSERVER_LOG_DEBUG(logger) MYSERVER_LOG_LEVEL(logger, myserver::LogLevel::DEBUG)
+#define MYLOG_LOG_DEBUG(logger) MYLOG_LOG_LEVEL(logger, mylog::LogLevel::DEBUG)
 // 使用logger写入info级别的流式日志
-#define MYSERVER_LOG_INFO(logger) MYSERVER_LOG_LEVEL(logger, myserver::LogLevel::INFO)
+#define MYLOG_LOG_INFO(logger) MYLOG_LOG_LEVEL(logger, mylog::LogLevel::INFO)
 // 使用logger写入warn级别的流式日志
-#define MYSERVER_LOG_WARN(logger) MYSERVER_LOG_LEVEL(logger, myserver::LogLevel::WARN)
+#define MYLOG_LOG_WARN(logger) MYLOG_LOG_LEVEL(logger, mylog::LogLevel::WARN)
 // 使用logger写入error级别的流式日志
-#define MYSERVER_LOG_ERROR(logger) MYSERVER_LOG_LEVEL(logger, myserver::LogLevel::ERROR)
+#define MYLOG_LOG_ERROR(logger) MYLOG_LOG_LEVEL(logger, mylog::LogLevel::ERROR)
 // 使用logger写入fatal级别的流式日志
-#define MYSERVER_LOG_FATAL(logger) MYSERVER_LOG_LEVEL(logger, myserver::LogLevel::FATAL)
+#define MYLOG_LOG_FATAL(logger) MYLOG_LOG_LEVEL(logger, mylog::LogLevel::FATAL)
 
 // 使用logger写入level级别的日志 (格式化, printf)
-#define MYSERVER_LOG_FMT_LEVEL(logger, level, fmt, ...)                                                               \
+#define MYLOG_LOG_FMT_LEVEL(logger, level, fmt, ...)                                                               \
     if (logger->getLevel() <= level)                                                                                  \
-    myserver::LogEventWrap(                                                                                           \
-        myserver::LogEvent::ptr(new myserver::LogEvent(logger, level, __FILE__, __LINE__, 0, myserver::GetThreadId(), \
-                                                       myserver::GetFiberId(), time(0))))                             \
+    mylog::LogEventWrap(                                                                                           \
+        mylog::LogEvent::ptr(new mylog::LogEvent(logger, level, __FILE__, __LINE__, 0, mylog::GetThreadId(), \
+                                                       mylog::GetFiberId(), time(0))))                             \
         .getEvent()                                                                                                   \
         ->format(fmt, __VA_ARGS__)
 
 // 使用logger写入debug级别的日志 (格式化, printf)
-#define MYSERVER_LOG_FMT_DEBUG(logger, fmt, ...) \
-    MYSERVER_LOG_FMT_LEVEL(logger, myserver::LogLevel::DEBUG, fmt, __VA_ARGS__)
+#define MYLOG_LOG_FMT_DEBUG(logger, fmt, ...) \
+    MYLOG_LOG_FMT_LEVEL(logger, mylog::LogLevel::DEBUG, fmt, __VA_ARGS__)
 // 使用logger写入info级别的日志 (格式化, printf)
-#define MYSERVER_LOG_FMT_INFO(logger, fmt, ...) \
-    MYSERVER_LOG_FMT_LEVEL(logger, myserver::LogLevel::INFO, fmt, __VA_ARGS__)
+#define MYLOG_LOG_FMT_INFO(logger, fmt, ...) \
+    MYLOG_LOG_FMT_LEVEL(logger, mylog::LogLevel::INFO, fmt, __VA_ARGS__)
 // 使用logger写入warn级别的日志 (格式化, printf)
-#define MYSERVER_LOG_FMT_WARN(logger, fmt, ...) \
-    MYSERVER_LOG_FMT_LEVEL(logger, myserver::LogLevel::WARN, fmt, __VA_ARGS__)
+#define MYLOG_LOG_FMT_WARN(logger, fmt, ...) \
+    MYLOG_LOG_FMT_LEVEL(logger, mylog::LogLevel::WARN, fmt, __VA_ARGS__)
 // 使用logger写入error级别的日志 (格式化, printf)
-#define MYSERVER_LOG_FMT_ERROR(logger, fmt, ...) \
-    MYSERVER_LOG_FMT_LEVEL(logger, myserver::LogLevel::ERROR, fmt, __VA_ARGS__)
+#define MYLOG_LOG_FMT_ERROR(logger, fmt, ...) \
+    MYLOG_LOG_FMT_LEVEL(logger, mylog::LogLevel::ERROR, fmt, __VA_ARGS__)
 // 使用logger写入fatal级别的日志 (格式化, printf)
-#define MYSERVER_LOG_FMT_FATAL(logger, fmt, ...) \
-    MYSERVER_LOG_FMT_LEVEL(logger, myserver::LogLevel::FATAL, fmt, __VA_ARGS__)
+#define MYLOG_LOG_FMT_FATAL(logger, fmt, ...) \
+    MYLOG_LOG_FMT_LEVEL(logger, mylog::LogLevel::FATAL, fmt, __VA_ARGS__)
 
-#define MYSERVER_LOG_ROOT() myserver::LoggerMgr::GetInstance()->getRoot()
+#define MYLOG_LOG_ROOT() mylog::LoggerMgr::GetInstance()->getRoot()
 
-namespace myserver {
+namespace mylog {
 
 // 提前声明(否则在LogAppender中拿不到该类)
 class Logger;
@@ -251,8 +251,8 @@ class LoggerManager {
     Logger::ptr m_root;
 };
 
-typedef myserver::Singleton<LoggerManager> LoggerMgr;
+typedef mylog::Singleton<LoggerManager> LoggerMgr;
 
-}  // namespace myserver
+}  // namespace mylog
 
 #endif

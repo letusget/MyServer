@@ -1,6 +1,6 @@
 #include "util.h"
 
-namespace myserver
+namespace mylog
 {
 /**
  * 这里不使用pthread_self返回的线程ID是因为pthread_self返回的是pthread库的线程id，
@@ -13,4 +13,4 @@ pid_t GetThreadId() {
 u_int32_t GetFiberId(){
     return 0;
 }
-} // namespace myserver
+} // namespace mylog

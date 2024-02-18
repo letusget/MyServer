@@ -7,7 +7,7 @@
 #include <functional>
 #include <map>
 
-namespace myserver {
+namespace mylog {
 
 // 使用宏来减少重复, 输出日志级别
 const char* LogLevel::ToString(LogLevel::Level level) {
@@ -418,4 +418,4 @@ Logger::ptr LoggerManager::getLogger(const std::string& name) {
     return it == m_loggers.end() ? m_root : it->second;
 }
 
-}  // namespace myserver
+}  // namespace mylog

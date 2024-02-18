@@ -1,10 +1,10 @@
 #include "config.h"
 
-namespace myserver {
+namespace mylog {
 Config::ConfigVarMap Config::s_datas;
 
 // 虚函数必须要提供定义
-myserver::ConfigVarBase::~ConfigVarBase() {}
+mylog::ConfigVarBase::~ConfigVarBase() {}
 
 ConfigVarBase::ptr Config::LookupBase(const std::string& name) {
     auto it = s_datas.find(name);
@@ -14,7 +14,7 @@ static void ListAllMember(const std::string& prefix, const YAML::Node& node,
                           std::list<std::pair<std::string, const YAML::Node>>& output) {
     // 字符校验
     if (prefix.find_first_not_of("abcdefghiJklmnopqrstuvwxyz._0123456789") != std::string::npos) {
-        MYSERVER_LOG_ERROR(MYSERVER_LOG_ROOT()) << "Config invalid name: " << prefix << " : " << node;
+        MYLOG_LOG_ERROR(MYLOG_LOG_ROOT()) << "Config invalid name: " << prefix << " : " << node;
     }
 
     output.push_back(std::make_pair(prefix, node));
@@ -55,4 +55,4 @@ void Config::LoadFromYaml(const YAML::Node& root) {
     }
 }
 
-}  // namespace myserver
+}  // namespace mylog

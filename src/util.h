@@ -1,5 +1,5 @@
-#ifndef __MYSERVER_UTIL_H__
-#define __MYSERVER_UTIL_H__
+#ifndef __MYLOG_UTIL_H__
+#define __MYLOG_UTIL_H__
 
 #include <pthread.h>
 #include <stdio.h>
@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <stdint.h>
 
-namespace myserver
+namespace mylog
 {
 // 获取系统中线程ID
 pid_t GetThreadId();
@@ -16,7 +16,7 @@ pid_t GetThreadId();
 // 获取协程ID
 u_int32_t GetFiberId();
 
-} // namespace myserver
+} // namespace mylog
 
 
 #endif
