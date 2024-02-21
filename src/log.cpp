@@ -220,6 +220,7 @@ void Logger::delAppender(LogAppender::ptr appender) {
     }
 }
 
+void Logger::clearAppenders() { m_appenders.clear(); }
 void Logger::log(LogLevel::Level level, LogEvent::ptr event) {
     // 日志等级覆盖
     if (level >= m_level) {
@@ -234,6 +235,18 @@ void Logger::log(LogLevel::Level level, LogEvent::ptr event) {
         }
     }
 }
+
+void Logger::setFormatter(LogFormatter::ptr val) { m_formatter = val; }
+void Logger::setFormatter(std::string& val) {
+    mylog::LogFormatter::ptr new_val(new mylog::LogFormatter(val));
+    if (new_val->isError()) {
+        std::cout << "Logger setFormatter name = " << m_name << "value = " << val << " invalid formatter "
+                  << "\n";
+        return;
+    }
+    m_formatter = new_val;
+}
+LogFormatter::ptr Logger::getFormatter() { return m_formatter; }
 
 //  Logger::志级别方法
 void Logger::debug(LogEvent::ptr event) { log(LogLevel::DEBUG, event); }
@@ -266,7 +279,7 @@ void StdoutLogAppender::log(Logger::ptr logger, LogLevel::Level level, LogEvent:
     }
 }
 
-LogFormatter::LogFormatter(const std::string& pattern) : m_pattern(pattern) { init(); }
+LogFormatter::LogFormatter(const std::string& pattern) : m_pattern(pattern), m_error(false) { init(); }
 
 std::string LogFormatter::format(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) {
     std::stringstream ss;
@@ -348,6 +361,7 @@ void LogFormatter::init() {
         } else if (format_status == 1) {
             // 只解析到{的情况，输出异常日志
             std::cout << "pattern parse error: " << m_pattern << " - " << m_pattern.substr(i) << " \n";
+            m_error = true;
             vec.push_back(std::make_tuple("<<pattern_error>>", fmt, 0));
         } else if (format_status == 2) {
             if (!normal_str.empty()) {
@@ -403,15 +417,12 @@ void LogFormatter::init() {
             auto it = s_format_items.find(std::get<0>(i));
             if (it == s_format_items.end()) {
                 m_items.push_back(FormatItem::ptr(new StringFormatItem("<<error_format % " + std::get<0>(i) + " >>")));
+                m_error = true;
             } else {
                 m_items.push_back(it->second(std::get<1>(i)));
             }
         }
-
-        // std::cout << "(" << std::get<0>(i) << ") - (" << std::get<1>(i) << ") - (" << std::get<2>(i) << ") \n";
     }
-
-    // std::cout << m_items.size() << " ##\n";
 }
 
 LoggerManager::LoggerManager() {
@@ -456,6 +467,36 @@ struct LogDefine {
     bool operator<(const LogDefine& oth) const { return name < oth.name; }
 };
 
+// 偏特化 反序列化
+template <class T>
+class LexicalCast<std::string, std::set<LogDefine>> {
+   public:
+    std::set<LogDefine> operator()(const std::string& v) {
+        YAML::Node node = YAML::Load(v);
+        typename std::set<LogDefine> vec;
+        std::stringstream ss;
+        for (auto it = node.begin(); it != node.end(); ++it) {
+        }
+        // C++17支持的返回值优化，允许在调用者的空间内直接构造返回对象，不需要强制move进行移动
+        // return std::move(vec);
+        return vec;
+    }
+};
+// 偏特化 序列化
+template <class T>
+class LexicalCast<std::set<LogDefine>, std::string> {
+   public:
+    std::string operator()(const std::set<LogDefine>& v) {
+        YAML::Node node;
+        for (auto& i : v) {
+            node[i.first] = YAML::Load(LexicalCast<T, std::string>()(i.second));
+        }
+        std::stringstream ss;
+        ss << node;
+        return ss.str();
+    }
+};
+
 mylog::ConfigVar<std::set<LogDefine>> g_log_defines =
     mylog::Config::Lookup("logs", std::set<LogDefine>(), "logs config");
 
@@ -463,28 +504,53 @@ struct LogIniter {
     LogIniter() {
         g_log_defines->addListener(0xF1E231,
                                    [](const std::set<LogDefine>& old_value, const std::set<LogDefine>& new_value) {
-                                    // 只有三种情况：新增、修改、擅长
-                                    // 新增
-                                    for(auto& i:new_value) {
-                                        auto it = old_value.find(i);
-                                        if(it == old_value.end()) {
-                                            // 新增logger
+                                       MYLOG_LOG_NAME(MYLOG_LOG_ROOT()) << "on_logger_conf_changed";
+                                       // 只有三种情况：新增、修改、删除
+                                       // 新增
+                                       for (auto& i : new_value) {
+                                           auto it = old_value.find(i);
+                                           mylog::Logger::ptr logger;
+                                           if (it == old_value.end()) {
+                                               // 新增logger
+                                               logger.reset(new mylog::Logger(i.name));
 
-                                        } else {
-                                            // 是否更新(发生变化)
-                                            if(!(i == *it)) {
-                                                // 修改旧的logger
-                                            }
-                                        }
-                                    }
+                                           } else {
+                                               // 是否更新(发生变化)
+                                               if (!(i == *it)) {
+                                                   // 修改旧的logger
+                                                   logger = MYLOG_LOG_NAME(i.name);
+                                               }
+                                           }
+                                           logger->setLevel(i.level);
+                                           if (!i.formatter.empty()) {
+                                               logger->setFormatter(std::string(i.formatter));
+                                           }
 
-                                    // 删除
-                                    for(auto& i:old_value) {
-                                        auto it = new_value.find(i);
-                                        if(it == new_value.end()) {
-                                            // 删除旧的
-                                        }
-                                    }
+                                           logger->clearAppenders();
+                                           for (auto& a : i.appenders) {
+                                               mylog::LogAppender::ptr ap;
+                                               if (a.type == 1) {
+                                                   ap.reset(new FileLogAppender(a.file));
+                                               } else if (a.type == 2) {
+                                                   ap.reset(new StdoutLogAppender);
+                                               }
+                                               ap->setLevel(a.level);
+                                               logger->addAppender(ap);
+                                           }
+                                       }
+
+                                       // 删除
+                                       for (auto& i : old_value) {
+                                           auto it = new_value.find(i);
+                                           if (it == new_value.end()) {
+                                               // 删除旧的
+                                               auto logger = MYLOG_LOG_NAME(i.name);
+                                               // 这里使用高等级(不会用到的等级)来表示删除
+                                               logger->setLevel((LogLevel::Level)100);
+                                               // 清空，相当于删除，下次默认使用root打印
+                                               logger->clearAppenders();
+                                           }
+                                       }
                                    });
     }
 };

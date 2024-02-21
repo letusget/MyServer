@@ -135,6 +135,9 @@ class LogFormatter {
     // 解析日志格式
     void init();
 
+    // 当前Formatter是否发生错误
+    bool isError() const { return m_error; }
+
    public:
     // 虚子类 用于定义各种日志格式
     class FormatItem {
@@ -153,6 +156,8 @@ class LogFormatter {
     std::string m_pattern;
     // 各种日志格式
     std::vector<FormatItem::ptr> m_items;
+    // 异常情况
+    bool m_error;
 };
 
 // 日志输出地
@@ -194,9 +199,13 @@ class Logger : public std::enable_shared_from_this<Logger> {
 
     void addAppender(LogAppender::ptr appender);
     void delAppender(LogAppender::ptr appender);
+    void clearAppenders();
     LogLevel::Level getLevel() const { return m_level; }
     void setLevel(LogLevel::Level val) { m_level = val; }
     const std::string getName() const { return m_name; }
+    void setFormatter(LogFormatter::ptr val);
+    void setFormatter(std::string& val);
+    LogFormatter::ptr getFormatter();
 
    private:
     // Appender集合
