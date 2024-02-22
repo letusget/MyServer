@@ -519,8 +519,43 @@ class LexicalCast<std::set<LogDefine>, std::string> {
 
         LogDefine ld;
         ld.name  = n["name"].as<std::string>();
-        ld.level = n["level"].IsDefined ? n["level"].as<std::string>() : "";
+        ld.level = LogLevel::FromString(n["level"].IsDefined() ? n["level"].as<std::string>() : "");
+        if (n["formatter"].IsDefined()) {
+            ld.formatter = n["formatter"].as<std::string>();
+        }
+
+        if (n["appenders"].IsDefined()) {
+            for (size_t x = 0; x < n["appenders"].size(); ++x) {
+                auto a = n["appenders"][x];
+                if (!a["type"].IsDefined()) {
+                    std::cout << "log config error: appender type is NULL - " << a << "\n";
+                    continue;
+                }
+                std::string type = a["type"].as<std::string>();
+                LogAppenderDefine lad;
+                if (type == "FileLogAppender") {
+                    lad.type = 1;
+                    if (!a["file"].IsDefined()) {
+                        std::cout << "log config error: fileappender file is NULL - " << a << "\n";
+                        continue;
+                    }
+                    lad.file = a["file"].as<std::string>();
+                    if(a["formatter"].IsDefined()) {
+                        lad.formatter = a["formatter"].as<std::string>();
+                    }
+                } else if (type == "StdoutLogAppender") {
+                    lad.type = 2;
+
+                } else {
+                    std::cout << "log config error: name is NULL - " << a << "\n";
+                    continue;
+                }
+                ld.appenders.push_back(lad);
+            }
+        }
+        vec.insert(ld);
     }
+    return vec;
 };
 
 mylog::ConfigVar<std::set<LogDefine>> g_log_defines =
