@@ -30,6 +30,19 @@ const char* LogLevel::ToString(LogLevel::Level level) {
     return "UNKNOWN";
 }
 
+LogLevel::Level LogLevel::FromString(const std::string& str) {
+#define XX(name)               \
+    if (str == "") {           \
+        return LogLevel::name; \
+    }
+    XX(DEBUG);
+    XX(INFO);
+    XX(WARN);
+    XX(ERROR);
+    XX(FATAL);
+    return LogLevel::UNKNOWN;
+#undef XX
+}
 LogEventWrap::LogEventWrap(LogEvent::ptr e) : m_event(e) {}
 LogEventWrap::~LogEventWrap() { m_event->getLogger()->log(m_event->getLevel(), m_event); }
 
@@ -487,13 +500,26 @@ template <class T>
 class LexicalCast<std::set<LogDefine>, std::string> {
    public:
     std::string operator()(const std::set<LogDefine>& v) {
-        YAML::Node node;
-        for (auto& i : v) {
-            node[i.first] = YAML::Load(LexicalCast<T, std::string>()(i.second));
+        // YAML::Node node;
+        // for (auto& i : v) {
+        //     node[i.first] = YAML::Load(LexicalCast<T, std::string>()(i.second));
+        // }
+        // std::stringstream ss;
+        // ss << node;
+        // return ss.str();
+        YAML::Node node = YAML::Load(v);
+        std::set<LogDefine> vec;
+        for (size_t i = 0; i < node.size(); ++i) {
+            auto n = node[i];
+            if (!n["name"].IsDefined()) {
+                std::cout << "log config error: name is NULL - " << n << "\n";
+                continue;
+            }
         }
-        std::stringstream ss;
-        ss << node;
-        return ss.str();
+
+        LogDefine ld;
+        ld.name  = n["name"].as<std::string>();
+        ld.level = n["level"].IsDefined ? n["level"].as<std::string>() : "";
     }
 };
 
