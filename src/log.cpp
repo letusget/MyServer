@@ -250,7 +250,7 @@ void Logger::log(LogLevel::Level level, LogEvent::ptr event) {
 }
 
 void Logger::setFormatter(LogFormatter::ptr val) { m_formatter = val; }
-void Logger::setFormatter(std::string& val) {
+void Logger::setFormatter(const std::string& val) {
     mylog::LogFormatter::ptr new_val(new mylog::LogFormatter(val));
     if (new_val->isError()) {
         std::cout << "Logger setFormatter name = " << m_name << "value = " << val << " invalid formatter "
@@ -481,8 +481,8 @@ struct LogDefine {
 };
 
 // 偏特化 反序列化
-template <class T>
-// class LexicalCast<std::string, std::set<LogDefine>> {
+template <>
+class LexicalCast<std::string, std::set<LogDefine>> {
    public:
     std::set<LogDefine> operator()(const std::string& v) {
         YAML::Node node = YAML::Load(v);
@@ -497,8 +497,8 @@ template <class T>
             LogDefine ld;
             ld.name  = n["name"].as<std::string>();
             ld.level = LogLevel::FromString(n["level"].IsDefined() ? n["level"].as<std::string>() : "");
-            if (a["formatter"].IsDefined()) {
-                ld.formatter = a["formatter"].as<std::string>();
+            if (n["formatter"].IsDefined()) {
+                ld.formatter = n["formatter"].as<std::string>();
             }
 
             if (n["appenders"].IsDefined()) {
@@ -536,7 +536,7 @@ template <class T>
     }
 };
 // 偏特化 序列化
-template <class T>
+template <>
 class LexicalCast<std::set<LogDefine>, std::string> {
    public:
     std::string operator()(const std::set<LogDefine> v) {
@@ -545,11 +545,11 @@ class LexicalCast<std::set<LogDefine>, std::string> {
             YAML::Node n;
             n["name"]  = i.name;
             n["level"] = LogLevel::ToString(i.level);
-            if (i.getFormatter().empty()) {
-                n["level"] = i.getFormatter();
+            if (i.formatter.empty()) {
+                n["level"] = i.formatter;
             }
 
-            for (auto& a : i.appendders) {
+            for (auto& a : i.appenders) {
                 YAML::Node na;
                 if (a.type == 1) {
                     na["type"] = "FileLogAppender";
@@ -572,14 +572,14 @@ class LexicalCast<std::set<LogDefine>, std::string> {
     }
 };
 
-mylog::ConfigVar<std::set<LogDefine>> g_log_defines =
+mylog::ConfigVar<std::set<LogDefine>>::ptr g_log_defines =
     mylog::Config::Lookup("logs", std::set<LogDefine>(), "logs config");
 
 struct LogIniter {
     LogIniter() {
         g_log_defines->addListener(0xF1E231,
                                    [](const std::set<LogDefine>& old_value, const std::set<LogDefine>& new_value) {
-                                       MYLOG_LOG_NAME(MYLOG_LOG_ROOT()) << "on_logger_conf_changed";
+                                       MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << "on_logger_conf_changed";
                                        // 只有三种情况：新增、修改、删除
                                        // 新增
                                        for (auto& i : new_value) {

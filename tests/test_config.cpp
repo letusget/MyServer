@@ -4,11 +4,9 @@
 
 mylog::ConfigVar<int>::ptr g_int_value_config = mylog::Config::Lookup("system.port", (int)8080, "system port");
 // 同样数据的不同类型会报错
-mylog::ConfigVar<float>::ptr g_float_valuex_config =
-    mylog::Config::Lookup("system.port", (float)8080, "system port");
+mylog::ConfigVar<float>::ptr g_float_valuex_config = mylog::Config::Lookup("system.port", (float)8080, "system port");
 
-mylog::ConfigVar<float>::ptr g_float_value_config =
-    mylog::Config::Lookup("system.value", (float)6.16f, "system value");
+mylog::ConfigVar<float>::ptr g_float_value_config = mylog::Config::Lookup("system.value", (float)6.16f, "system value");
 mylog::ConfigVar<std::vector<int>>::ptr g_int_vector_value_config =
     mylog::Config::Lookup("system.int_vector", std::vector<int>{1, 2}, "system int vec");
 mylog::ConfigVar<std::list<int>>::ptr g_int_list_value_config =
@@ -17,18 +15,17 @@ mylog::ConfigVar<std::set<int>>::ptr g_int_set_value_config =
     mylog::Config::Lookup("system.int_set", std::set<int>{1, 2}, "system int set");
 mylog::ConfigVar<std::unordered_set<int>>::ptr g_int_uset_value_config =
     mylog::Config::Lookup("system.int_uset", std::unordered_set<int>{1, 2}, "system int unordered_set");
-mylog::ConfigVar<std::map<std::string, int>>::ptr g_str_int_map_value_config = mylog::Config::Lookup(
-    "system.str_int_map", std::map<std::string, int>{{"k1", 1}, {"k2", 2}}, "system str int map");
+mylog::ConfigVar<std::map<std::string, int>>::ptr g_str_int_map_value_config =
+    mylog::Config::Lookup("system.str_int_map", std::map<std::string, int>{{"k1", 1}, {"k2", 2}}, "system str int map");
 mylog::ConfigVar<std::unordered_map<std::string, int>>::ptr g_str_int_umap_value_config = mylog::Config::Lookup(
     "system.str_int_umap", std::unordered_map<std::string, int>{{"k1", 1}, {"k2", 2}}, "system str int unordered_map");
 
 void print_yaml(const YAML::Node& node, int level) {
     if (node.IsScalar()) {
-        MYLOG_LOG_INFO(MYLOG_LOG_ROOT())
-            << std::string(level * 4, ' ') << node.Scalar() << " - " << node.Type() << " - " << level;
+        MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << std::string(level * 4, ' ') << node.Scalar() << " - " << node.Type()
+                                         << " - " << level;
     } else if (node.IsNull()) {
-        MYLOG_LOG_INFO(MYLOG_LOG_ROOT())
-            << std::string(level * 4, ' ') << "NULL - " << node.Type() << " - " << level;
+        MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << std::string(level * 4, ' ') << "NULL - " << node.Type() << " - " << level;
     } else if (node.IsMap()) {
         for (auto it = node.begin(); it != node.end(); ++it) {
             MYLOG_LOG_INFO(MYLOG_LOG_ROOT())
@@ -56,21 +53,21 @@ void test_config() {
     MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << "before: " << g_int_value_config->getValue();
     MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << "before: " << g_float_value_config->getValue();
 
-#define XX(g_var, name, prefix)                                                                     \
-    {                                                                                               \
-        auto v = g_var->getValue();                                                                 \
-        for (auto& i : v) {                                                                         \
+#define XX(g_var, name, prefix)                                                               \
+    {                                                                                         \
+        auto v = g_var->getValue();                                                           \
+        for (auto& i : v) {                                                                   \
             MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << #prefix " " #name ": " << i;                  \
-        }                                                                                           \
+        }                                                                                     \
         MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << #prefix " " #name " yaml: " << g_var->toString(); \
     }
 
-#define XX_M(g_var, name, prefix)                                                                                      \
-    {                                                                                                                  \
-        auto v = g_var->getValue();                                                                                    \
-        for (auto& i : v) {                                                                                            \
+#define XX_M(g_var, name, prefix)                                                                                \
+    {                                                                                                            \
+        auto v = g_var->getValue();                                                                              \
+        for (auto& i : v) {                                                                                      \
             MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << #prefix " " #name ": {" << i.first << " - " << i.second << "} "; \
-        }                                                                                                              \
+        }                                                                                                        \
         MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << #prefix " " #name " yaml: " << g_var->toString();                    \
     }
 
@@ -161,20 +158,19 @@ mylog::ConfigVar<std::map<std::string, std::vector<Person>>>::ptr g_person_vec_m
     mylog::Config::Lookup("class.vec_map", std::map<std::string, std::vector<Person>>(), "system person");
 
 void test_class() {
-    MYLOG_LOG_INFO(MYLOG_LOG_ROOT())
-        << "before: " << g_person->getValue().toString() << " - " << g_person->toString();
-#define XX_PM(g_var, prefix)                                                                                     \
-    {                                                                                                            \
-        auto m = g_var->getValue();                                                                              \
-        for (auto& i : m) {                                                                                      \
+    MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << "before: " << g_person->getValue().toString() << " - " << g_person->toString();
+#define XX_PM(g_var, prefix)                                                                               \
+    {                                                                                                      \
+        auto m = g_var->getValue();                                                                        \
+        for (auto& i : m) {                                                                                \
             MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << prefix << ": " << i.first << " - " << i.second.toString(); \
-        }                                                                                                        \
+        }                                                                                                  \
         MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << prefix << ": size=" << m.size();                               \
     }
 
     g_person->addListener(10, [](const Person& old_value, const Person& new_value) {
-        MYLOG_LOG_INFO(MYLOG_LOG_ROOT())
-            << "old_value = " << old_value.toString() << " - new_value = " << new_value.toString();
+        MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << "old_value = " << old_value.toString()
+                                         << " - new_value = " << new_value.toString();
     });
 
     XX_PM(g_person_map, "class.map before");
@@ -183,17 +179,22 @@ void test_class() {
     YAML::Node root = YAML::LoadFile("../bin/conf/test.yml");
     mylog::Config::LoadFromYaml(root);
 
-    MYLOG_LOG_INFO(MYLOG_LOG_ROOT())
-        << "after: " << g_person->getValue().toString() << " - " << g_person->toString();
+    MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << "after: " << g_person->getValue().toString() << " - " << g_person->toString();
     XX_PM(g_person_map, "class.map after");
 
     MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << "after: " << g_person_vec_map->toString();
 }
 
+void test_log() {
+    // 对于系统自启程序，如果程序CWD(当前工作目录)目录不是期望的目录，可能会存在相对路径错误的情况
+    YAML::Node root = YAML::LoadFile("../bin/conf/test.yml");
+    mylog::Config::LoadFromYaml(root);
+}
 int main(int argc, char** argv) {
     // test_yaml();
     // test_config();
-    test_class();
+    // test_class();
+    test_log();
 
     return 0;
 }
