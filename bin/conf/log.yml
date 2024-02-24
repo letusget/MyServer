@@ -11,5 +11,5 @@ logs:
       formatter: "%d%T%m%n"
       appender:
           - type: FileLogAppender
-            path:: log.txt
-          - type:: StdoutLogAppender
+            path: log.txt
+          - type: StdoutLogAppender
