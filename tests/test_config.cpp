@@ -186,9 +186,14 @@ void test_class() {
 }
 
 void test_log() {
+    std::cout << "before: \n" << mylog::LoggerMgr::GetInstance()->toYamlString() << "\n";
+
     // 对于系统自启程序，如果程序CWD(当前工作目录)目录不是期望的目录，可能会存在相对路径错误的情况
-    YAML::Node root = YAML::LoadFile("../bin/conf/test.yml");
+    // YAML::Node root = YAML::LoadFile("../bin/conf/test.yml");
+    YAML::Node root = YAML::LoadFile("/home/william/projects/serverproject/MyServer/bin/conf/log.yml");
     mylog::Config::LoadFromYaml(root);
+    std::cout << "\n######################\n";
+    std::cout << "after: \n" << mylog::LoggerMgr::GetInstance()->toYamlString() << "\n";
 }
 int main(int argc, char** argv) {
     // test_yaml();
