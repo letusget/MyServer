@@ -198,7 +198,7 @@ void test_log() {
     mylog::Config::LoadFromYaml(root);
     std::cout << "\n######################\n";
     std::cout << "after: \n" << mylog::LoggerMgr::GetInstance()->toYamlString() << "\n";
-    std::cout << "\n=============:\n" << root << "\n";
+    std::cout << "\nlog file:=============:\n" << root << "\n";
     MYLOG_LOG_INFO(system_log) << "1 hello system"
                                << "\n";
 

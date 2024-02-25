@@ -261,6 +261,7 @@ class LoggerManager {
     void init();
     Logger::ptr getRoot() const { return m_root; }
     std::string toYamlString();
+
    private:
     std::map<std::string, Logger::ptr> m_loggers;
     Logger::ptr m_root;
