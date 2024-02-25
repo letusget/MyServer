@@ -231,9 +231,6 @@ class Logger : public std::enable_shared_from_this<Logger> {
 // 输出到控制台的Appender
 class StdoutLogAppender : public LogAppender {
    public:
-    //  StdoutLogAppender();
-    //  ~StdoutLogAppender();
-
     typedef std::shared_ptr<StdoutLogAppender> ptr;
     void log(Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) override;
     std::string toYamlString() override;
@@ -244,9 +241,6 @@ class StdoutLogAppender : public LogAppender {
 // 输出到文件的Appender
 class FileLogAppender : public LogAppender {
    public:
-    //  FileLogAppender();
-    //  ~FileLogAppender();
-
     typedef std::shared_ptr<FileLogAppender> ptr;
     FileLogAppender(const std::string& filename);
     void log(Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) override;
@@ -266,9 +260,7 @@ class LoggerManager {
     Logger::ptr getLogger(const std::string& name);
     void init();
     Logger::ptr getRoot() const { return m_root; }
-
     std::string toYamlString();
-
    private:
     std::map<std::string, Logger::ptr> m_loggers;
     Logger::ptr m_root;
