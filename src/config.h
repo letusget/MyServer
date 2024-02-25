@@ -283,8 +283,8 @@ class ConfigVar : public ConfigVarBase {
             // m_val = boost::lexical_cast<T>(val);
             setValue(FromStr()(val));
         } catch (std::exception& e) {
-            MYLOG_LOG_ERROR(MYLOG_LOG_ROOT()) << "ConfigVar::toString exception" << e.what()
-                                                    << "convert: string to" << typeid(m_val).name() << " - " << val;
+            MYLOG_LOG_ERROR(MYLOG_LOG_ROOT()) << "ConfigVar::toString exception" << e.what() << "convert: string to"
+                                              << typeid(m_val).name() << " - " << val;
         }
         return false;
     }
@@ -297,7 +297,6 @@ class ConfigVar : public ConfigVarBase {
         }
         for (auto& i : m_cbs) {
             i.second(m_val, v);
-            
         }
         m_val = v;
     }
@@ -309,9 +308,7 @@ class ConfigVar : public ConfigVarBase {
         auto it = m_cbs.find(key);
         return it == m_cbs.end() ? nullptr : it->second;
     }
-    void clearListener() {
-        m_cbs.clear();
-    }
+    void clearListener() { m_cbs.clear(); }
 
    private:
     T m_val;
@@ -376,7 +373,7 @@ class Config {
     static ConfigVarBase::ptr LookupBase(const std::string& name);
 
    private:
-// 这里直接使用静态的s_datas可能会存在初始化问题，在使用时还未初始化，导致错误，改为get方法获取
+    // 这里直接使用静态的s_datas可能会存在初始化问题，在使用时还未初始化，导致错误，改为get方法获取
     // static ConfigVarMap s_datas;
     static ConfigVarMap& GetDatas() {
         static ConfigVarMap s_datas;

@@ -4,7 +4,8 @@
 
 mylog::ConfigVar<int>::ptr g_int_value_config = mylog::Config::Lookup("system.port", (int)8080, "system port");
 // 同样数据的不同类型会报错
-mylog::ConfigVar<float>::ptr g_float_valuex_config = mylog::Config::Lookup("system.port", (float)8080, "system port");
+// mylog::ConfigVar<float>::ptr g_float_valuex_config = mylog::Config::Lookup("system.port", (float)8080, "system
+// port");
 
 mylog::ConfigVar<float>::ptr g_float_value_config = mylog::Config::Lookup("system.value", (float)6.16f, "system value");
 mylog::ConfigVar<std::vector<int>>::ptr g_int_vector_value_config =
@@ -186,6 +187,9 @@ void test_class() {
 }
 
 void test_log() {
+    static mylog::Logger::ptr system_log = MYLOG_LOG_NAME("system");
+    MYLOG_LOG_INFO(system_log) << "0 hello system"
+                               << "\n";
     std::cout << "before: \n" << mylog::LoggerMgr::GetInstance()->toYamlString() << "\n";
 
     // 对于系统自启程序，如果程序CWD(当前工作目录)目录不是期望的目录，可能会存在相对路径错误的情况
@@ -194,6 +198,13 @@ void test_log() {
     mylog::Config::LoadFromYaml(root);
     std::cout << "\n######################\n";
     std::cout << "after: \n" << mylog::LoggerMgr::GetInstance()->toYamlString() << "\n";
+    std::cout << "\n=============:\n" << root << "\n";
+    MYLOG_LOG_INFO(system_log) << "1 hello system"
+                               << "\n";
+
+    system_log->setFormatter("%d - %m%n");
+    MYLOG_LOG_INFO(system_log) << "2 hello system"
+                               << "\n";
 }
 int main(int argc, char** argv) {
     // test_yaml();

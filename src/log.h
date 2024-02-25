@@ -139,9 +139,8 @@ class LogFormatter {
     // 当前Formatter是否发生错误
     bool isError() const { return m_error; }
 
-    const std::string getPattern() const {
-        return m_pattern;
-    }
+    const std::string getPattern() const { return m_pattern; }
+
    public:
     // 虚子类 用于定义各种日志格式
     class FormatItem {
@@ -166,13 +165,15 @@ class LogFormatter {
 
 // 日志输出地
 class LogAppender {
+    friend class Logger;
+
    public:
     typedef std::shared_ptr<LogAppender> ptr;
     //  LogAppender();
     virtual ~LogAppender();
     virtual void log(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) = 0;
-    virtual std::string toYamlString() = 0;
-    void setFormatter(LogFormatter::ptr val) { m_formatter = val; }
+    virtual std::string toYamlString()                                                           = 0;
+    void setFormatter(LogFormatter::ptr val);
     LogFormatter::ptr getFormatter() const { return m_formatter; }
     LogLevel::Level getLevel() const { return m_level; }
     void setLevel(LogLevel::Level val) { m_level = val; }
@@ -182,6 +183,8 @@ class LogAppender {
     LogLevel::Level m_level = LogLevel::DEBUG;  // 需要初始化
     // 处理不同日志格式
     LogFormatter::ptr m_formatter;
+    // 记录当前日志formatter的情况
+    bool m_hasFormatter = false;
 };
 
 // 日志输出器
@@ -234,6 +237,7 @@ class StdoutLogAppender : public LogAppender {
     typedef std::shared_ptr<StdoutLogAppender> ptr;
     void log(Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) override;
     std::string toYamlString() override;
+
    private:
 };
 
@@ -264,6 +268,7 @@ class LoggerManager {
     Logger::ptr getRoot() const { return m_root; }
 
     std::string toYamlString();
+
    private:
     std::map<std::string, Logger::ptr> m_loggers;
     Logger::ptr m_root;
