@@ -31,11 +31,11 @@ add_library(mylog SHARED ${LIB_SRC})
 force_redefine_file_macro_for_sources(mylog)
 
 # 创建可执行文件
-add_executable(test tests/test.cpp)
+add_executable(test_log tests/test_log.cpp)
 # 重定义 __FILE__ 宏，将默认绝对路径改为相对路径
-force_redefine_file_macro_for_sources(test)
+force_redefine_file_macro_for_sources(test_log)
 # 链接库
-target_link_libraries(test mylog yaml-cpp)
+target_link_libraries(test_log mylog yaml-cpp)
 
 # 创建可执行文件
 add_executable(test_config tests/test_config.cpp)
