@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "singleton.h"
+#include "thread.h"
 #include "util.h"
 
 // 写入level级别的流式日志
@@ -169,12 +170,17 @@ class LogAppender {
 
    public:
     typedef std::shared_ptr<LogAppender> ptr;
-    //  LogAppender();
+    // 方便快速切换锁
+    typedef myserver::Mutex MutexType;
+
     virtual ~LogAppender();
     virtual void log(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) = 0;
     virtual std::string toYamlString()                                                           = 0;
     void setFormatter(LogFormatter::ptr val);
-    LogFormatter::ptr getFormatter() const { return m_formatter; }
+    // LogFormatter::ptr getFormatter() const { return m_formatter; }
+    LogFormatter::ptr getFormatter();
+
+    // 单一变量，不必加锁
     LogLevel::Level getLevel() const { return m_level; }
     void setLevel(LogLevel::Level val) { m_level = val; }
 
@@ -185,6 +191,9 @@ class LogAppender {
     LogFormatter::ptr m_formatter;
     // 记录当前日志formatter的情况
     bool m_hasFormatter = false;
+
+    // 使用锁
+    MutexType m_mutex;
 };
 
 // 日志输出器
@@ -193,6 +202,8 @@ class Logger : public std::enable_shared_from_this<Logger> {
 
    public:
     typedef std::shared_ptr<Logger> ptr;
+    // 方便快速切换锁
+    typedef myserver::Mutex MutexType;
     Logger(const std::string& name = "root");
     //  ~Logger();
 
@@ -226,6 +237,9 @@ class Logger : public std::enable_shared_from_this<Logger> {
     LogFormatter::ptr m_formatter;
     // 日志配置，默认为root，配置后由配置项设置
     Logger::ptr m_root;
+
+    // 使用锁
+    MutexType m_mutex;
 };
 
 // 输出到控制台的Appender
@@ -256,6 +270,8 @@ class FileLogAppender : public LogAppender {
 // 日志管理器
 class LoggerManager {
    public:
+    // 方便快速切换锁
+    typedef myserver::Mutex MutexType;
     LoggerManager();
     Logger::ptr getLogger(const std::string& name);
     void init();
@@ -265,6 +281,9 @@ class LoggerManager {
    private:
     std::map<std::string, Logger::ptr> m_loggers;
     Logger::ptr m_root;
+
+    // 使用锁
+    MutexType m_mutex;
 };
 
 typedef mylog::Singleton<LoggerManager> LoggerMgr;

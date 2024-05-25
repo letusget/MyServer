@@ -195,6 +195,17 @@ class WriteScopedLockImpl {
     bool m_locked = false;
 };
 
+// 用于测试的锁对象，用于测试线程安全，不进行实际的加锁和解锁操作
+class NullMutex {  // 空互斥锁
+   public:
+    typedef ScopedLockImpl<NullMutex> Lock;
+
+    NullMutex() {}
+    ~NullMutex() {}
+    void lock() {}
+    void unlock() {}
+};
+
 // 互斥锁对象 不分读写锁
 class Mutex {
    public:
@@ -233,6 +244,19 @@ class RWMutex {
    private:
     // 读写锁对象
     pthread_rwlock_t m_rwlock;
+};
+
+// 用于测试的读写锁对象，用于测试线程安全，不进行实际的加锁和解锁操作
+class NullRWMutex {  // 空读写锁
+   public:
+    typedef ReadScopedLockImpl<RWMutex> ReadLock;
+    typedef WriteScopedLockImpl<RWMutex> WriteLock;
+
+    NullRWMutex() {}
+    ~NullRWMutex() {}
+    void rlock() {}
+    void wlock() {}
+    void unlock() {}
 };
 
 // 封装线程对象
