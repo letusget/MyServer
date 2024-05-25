@@ -6,6 +6,8 @@ mylog::Logger::ptr g_logger = MYLOG_LOG_ROOT();
 int count = 0;
 // 读写锁
 myserver::RWMutex s_rwmutex;
+// 互斥锁
+myserver::Mutex s_mutex;
 
 void fun1() {
     // do something
@@ -20,7 +22,8 @@ void fun1() {
         // 这里循环1000000次，模拟读写操作, 次数越多，竞争越激烈，结果越不一致
 
         // 加锁 由lockguard自动释放
-        myserver::RWMutex::WriteLock lock(s_rwmutex);
+        // myserver::RWMutex::WriteLock lock(s_rwmutex);
+        myserver::Mutex::Lock lock(s_mutex);
         count++;
     }
 }

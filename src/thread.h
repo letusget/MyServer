@@ -97,21 +97,6 @@ class ScopedLockImpl {
     bool m_locked = false;
 };
 
-// // 互斥锁对象 不分读写锁
-// class Mutex {
-//    public:
-//     Mutex() { pthread_mutex_init(&m_mutex, nullptr); }
-//     ~Mutex() { pthread_mutex_destroy(&m_mutex); }
-
-//     void lock() { pthread_mutex_lock(&m_mutex); }
-
-//     void unlock() { pthread_mutex_unlock(&m_mutex); }
-
-//    private:
-//     // 互斥锁对象
-//     pthread_mutex_t m_mutex;
-// };
-
 // 封装读锁对象 lockguard
 // 使用类模板LockGuard，封装读写锁: 构造加锁 析构解锁(RAII)
 template <class T>
@@ -210,12 +195,29 @@ class WriteScopedLockImpl {
     bool m_locked = false;
 };
 
+// 互斥锁对象 不分读写锁
+class Mutex {
+   public:
+    typedef ScopedLockImpl<Mutex> Lock;
+
+    Mutex() { pthread_mutex_init(&m_mutex, nullptr); }
+    ~Mutex() { pthread_mutex_destroy(&m_mutex); }
+
+    void lock() { pthread_mutex_lock(&m_mutex); }
+
+    void unlock() { pthread_mutex_unlock(&m_mutex); }
+
+   private:
+    // 互斥锁对象
+    pthread_mutex_t m_mutex;
+};
+
 // 互斥锁对象 分读写锁
 class RWMutex {
    public:
     typedef ReadScopedLockImpl<RWMutex> ReadLock;
     typedef WriteScopedLockImpl<RWMutex> WriteLock;
-    
+
     RWMutex() { pthread_rwlock_init(&m_rwlock, nullptr); }
     ~RWMutex() { pthread_rwlock_destroy(&m_rwlock); }
 
