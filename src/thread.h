@@ -34,7 +34,7 @@ class Semaphore {
     // void setValue(uint32_t count);
     // // 重置信号量计数
     // void reset(uint32_t count = 0);
-    // // 等待信号量，直到超时或计数为0    
+    // // 等待信号量，直到超时或计数为0
     // bool timedWait(uint32_t timeout_ms);
 
    private:
@@ -46,6 +46,191 @@ class Semaphore {
 
    private:
     sem_t m_semaphore;
+};
+
+// 封装互斥量对象 lockguard
+// 使用类模板LockGuard，封装互斥锁: 构造加锁 析构解锁(RAII)
+template <class T>
+class ScopedLockImpl {
+    /**
+     * @brief 构造函数，加锁
+     * @param mutex 互斥锁对象
+     * 通用互斥锁类模板
+     * 封装互斥锁对象，提供加锁和解锁接口
+     */
+   public:
+    // 加锁
+    ScopedLockImpl(T& mutex) : m_mutex(mutex) {
+        m_mutex.lock();  // 加锁
+        m_locked = true;
+    }
+    ~ScopedLockImpl() {
+        // 解锁
+        unlock();
+    }
+
+    void lock() {
+        if (!m_locked) {
+            m_mutex.lock();  // 加锁
+            m_locked = true;
+        }
+    }
+
+    void unlock() {
+        if (m_locked) {
+            m_mutex.unlock();  // 解锁
+            m_locked = false;
+        }
+    }
+
+   private:
+    // 禁用拷贝构造函数和赋值运算符，防止互斥锁对象被复制
+    ScopedLockImpl(const ScopedLockImpl&)  = delete;
+    ScopedLockImpl(const ScopedLockImpl&&) = delete;
+    ScopedLockImpl& operator=(const ScopedLockImpl&) = delete;
+    ScopedLockImpl& operator=(const ScopedLockImpl&&) = delete;
+
+   private:
+    // 互斥锁对象
+    T& m_mutex;
+    // 互斥锁状态
+    bool m_locked = false;
+};
+
+// // 互斥锁对象 不分读写锁
+// class Mutex {
+//    public:
+//     Mutex() { pthread_mutex_init(&m_mutex, nullptr); }
+//     ~Mutex() { pthread_mutex_destroy(&m_mutex); }
+
+//     void lock() { pthread_mutex_lock(&m_mutex); }
+
+//     void unlock() { pthread_mutex_unlock(&m_mutex); }
+
+//    private:
+//     // 互斥锁对象
+//     pthread_mutex_t m_mutex;
+// };
+
+// 封装读锁对象 lockguard
+// 使用类模板LockGuard，封装读写锁: 构造加锁 析构解锁(RAII)
+template <class T>
+class ReadScopedLockImpl {
+    /**
+     * @brief 构造函数，加锁
+     * @param mutex 互斥锁对象
+     * 通用互斥锁类模板
+     * 封装互斥锁对象，提供加锁和解锁接口
+     */
+   public:
+    // 加锁
+    ReadScopedLockImpl(T& mutex) : m_mutex(mutex) {
+        m_mutex.rdlock();  // 加锁
+        m_locked = true;
+    }
+    ~ReadScopedLockImpl() {
+        // 解锁
+        unlock();
+    }
+
+    void lock() {
+        if (!m_locked) {
+            m_mutex.rdlock();  // 加锁
+            m_locked = true;
+        }
+    }
+
+    void unlock() {
+        if (m_locked) {
+            m_mutex.unlock();  // 解锁
+            m_locked = false;
+        }
+    }
+
+   private:
+    // 禁用拷贝构造函数和赋值运算符，防止互斥锁对象被复制
+    ReadScopedLockImpl(const ReadScopedLockImpl&)  = delete;
+    ReadScopedLockImpl(const ReadScopedLockImpl&&) = delete;
+    ReadScopedLockImpl& operator=(const ReadScopedLockImpl&) = delete;
+    ReadScopedLockImpl& operator=(const ReadScopedLockImpl&&) = delete;
+
+   private:
+    // 互斥锁对象
+    T& m_mutex;
+    // 互斥锁状态
+    bool m_locked = false;
+};
+
+// 封装写锁对象 lockguard
+// 使用类模板LockGuard，封装读写锁: 构造加锁 析构解锁(RAII)
+template <class T>
+class WriteScopedLockImpl {
+    /**
+     * @brief 构造函数，加锁
+     * @param mutex 互斥锁对象
+     * 通用互斥锁类模板
+     * 封装互斥锁对象，提供加锁和解锁接口
+     */
+   public:
+    // 加锁
+    WriteScopedLockImpl(T& mutex) : m_mutex(mutex) {
+        m_mutex.wrlock();  // 加锁
+        m_locked = true;
+    }
+    ~WriteScopedLockImpl() {
+        // 解锁
+        unlock();
+    }
+
+    void lock() {
+        if (!m_locked) {
+            m_mutex.wrlock();  // 加锁
+            m_locked = true;
+        }
+    }
+
+    void unlock() {
+        if (m_locked) {
+            m_mutex.unlock();  // 解锁
+            m_locked = false;
+        }
+    }
+
+   private:
+    // 禁用拷贝构造函数和赋值运算符，防止互斥锁对象被复制
+    WriteScopedLockImpl(const WriteScopedLockImpl&)  = delete;
+    WriteScopedLockImpl(const WriteScopedLockImpl&&) = delete;
+    WriteScopedLockImpl& operator=(const WriteScopedLockImpl&) = delete;
+    WriteScopedLockImpl& operator=(const WriteScopedLockImpl&&) = delete;
+
+   private:
+    // 互斥锁对象
+    T& m_mutex;
+    // 互斥锁状态
+    bool m_locked = false;
+};
+
+// 互斥锁对象 分读写锁
+class RWMutex {
+   public:
+    typedef ReadScopedLockImpl<RWMutex> ReadLock;
+    typedef WriteScopedLockImpl<RWMutex> WriteLock;
+    
+    RWMutex() { pthread_rwlock_init(&m_rwlock, nullptr); }
+    ~RWMutex() { pthread_rwlock_destroy(&m_rwlock); }
+
+    // 读锁
+    void rdlock() { pthread_rwlock_rdlock(&m_rwlock); }
+
+    // 写锁
+    void wrlock() { pthread_rwlock_wrlock(&m_rwlock); }
+
+    // 解锁
+    void unlock() { pthread_rwlock_unlock(&m_rwlock); }
+
+   private:
+    // 读写锁对象
+    pthread_rwlock_t m_rwlock;
 };
 
 // 封装线程对象
