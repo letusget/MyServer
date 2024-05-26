@@ -247,7 +247,8 @@ void Logger::addAppender(LogAppender::ptr appender) {
     // 加锁
     MutexType::Lock lock(m_mutex);
     if (!appender->getFormatter()) {
-        MutexType::Lock lock_l(m_mutex);
+        // 加锁
+        MutexType::Lock lock_l(appender->m_mutex);
         appender->m_formatter = m_formatter;
     }
     m_appenders.push_back(appender);
@@ -309,7 +310,10 @@ void Logger::setFormatter(const std::string& val) {
     // 在setFormatter内部加锁，缩小锁的范围
     setFormatter(new_val);
 }
-LogFormatter::ptr Logger::getFormatter() { return m_formatter; }
+LogFormatter::ptr Logger::getFormatter() { 
+    // 加锁
+    MutexType::Lock lock(m_mutex);
+    return m_formatter; }
 
 std::string Logger::toYamlString() {
     // 加锁
@@ -386,6 +390,8 @@ void StdoutLogAppender::log(Logger::ptr logger, LogLevel::Level level, LogEvent:
 }
 
 std::string StdoutLogAppender::toYamlString() {
+    // 加锁 
+    MutexType::Lock lock(m_mutex);
     YAML::Node node;
     node["type"] = "StdoutLogAppender";
     if (m_level != LogLevel::UNKNOWN) {
