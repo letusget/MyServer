@@ -13,7 +13,8 @@ myserver::Mutex s_mutex;
 void fun1() {
     MYLOG_LOG_INFO(g_logger) << "name: " << myserver::Thread::GetName()
                              << " this.name: " << myserver::Thread::GetThis()->getName()
-                             << " id: " << myserver::GetThreadId() << " this.id: " << myserver::Thread::GetThis()->getId()
+                             << " id: " << myserver::GetThreadId()
+                             << " this.id: " << myserver::Thread::GetThis()->getId()
                              << " this.id: " << myserver::Thread::GetThis()->getId() << std::endl;
 
     // 需要读写锁，避免竞争条件导致每次count的结果不一致

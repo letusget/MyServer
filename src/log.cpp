@@ -345,7 +345,7 @@ void Logger::error(LogEvent::ptr event) { log(LogLevel::ERROR, event); }
 void Logger::fatal(LogEvent::ptr event) { log(LogLevel::FATAL, event); }
 
 // TODO reopen() 优化
-FileLogAppender::FileLogAppender(const std::string& filename) : m_filename(filename),m_lastTime(0) { reopen(); }
+FileLogAppender::FileLogAppender(const std::string& filename) : m_filename(filename), m_lastTime(0) { reopen(); }
 
 void FileLogAppender::log(Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) {
     if (level >= m_level) {
@@ -711,69 +711,68 @@ mylog::ConfigVar<std::set<LogDefine>>::ptr g_log_defines =
 
 struct LogIniter {
     LogIniter() {
-        g_log_defines->addListener(
-            0xF1E231, [](const std::set<LogDefine>& old_value, const std::set<LogDefine>& new_value) {
-                MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << "on_logger_conf_changed";
-                // 只有三种情况：新增、修改、删除
-                // 新增
-                for (auto& i : new_value) {
-                    auto it = old_value.find(i);
-                    mylog::Logger::ptr logger;
-                    if (it == old_value.end()) {
-                        // 新增logger
-                        // TODO 这里由于每次都创建了一个新的logger，所以配置没有生效
-                        // logger.reset(new mylog::Logger(i.name));
+        g_log_defines->addListener([](const std::set<LogDefine>& old_value, const std::set<LogDefine>& new_value) {
+            MYLOG_LOG_INFO(MYLOG_LOG_ROOT()) << "on_logger_conf_changed";
+            // 只有三种情况：新增、修改、删除
+            // 新增
+            for (auto& i : new_value) {
+                auto it = old_value.find(i);
+                mylog::Logger::ptr logger;
+                if (it == old_value.end()) {
+                    // 新增logger
+                    // TODO 这里由于每次都创建了一个新的logger，所以配置没有生效
+                    // logger.reset(new mylog::Logger(i.name));
+                    logger = MYLOG_LOG_NAME(i.name);
+
+                } else {
+                    // 是否更新(发生变化)
+                    if (!(i == *it)) {
+                        // 修改旧的logger
                         logger = MYLOG_LOG_NAME(i.name);
+                    }
+                }
+                logger->setLevel(i.level);
+                if (!i.formatter.empty()) {
+                    logger->setFormatter((i.formatter));
+                }
 
-                    } else {
-                        // 是否更新(发生变化)
-                        if (!(i == *it)) {
-                            // 修改旧的logger
-                            logger = MYLOG_LOG_NAME(i.name);
+                logger->clearAppenders();
+                for (auto& a : i.appenders) {
+                    mylog::LogAppender::ptr ap;
+                    if (a.type == 1) {
+                        ap.reset(new FileLogAppender(a.file));
+                    } else if (a.type == 2) {
+                        ap.reset(new StdoutLogAppender);
+                    }
+                    ap->setLevel(a.level);
+                    if (!a.formatter.empty()) {
+                        LogFormatter::ptr fmt(new LogFormatter(a.formatter));
+                        if (!fmt->isError()) {
+                            ap->setFormatter(fmt);
+                        } else {
+                            std::cout << "log.name = " << i.name << "appender type = " << a.type
+                                      << " formatter = " << a.formatter.c_str() << "is invalid"
+                                      << "\n";
                         }
                     }
-                    logger->setLevel(i.level);
-                    if (!i.formatter.empty()) {
-                        logger->setFormatter((i.formatter));
-                    }
 
+                    logger->addAppender(ap);
+                }
+            }
+
+            // 删除
+            for (auto& i : old_value) {
+                auto it = new_value.find(i);
+                if (it == new_value.end()) {
+                    // 删除旧的
+                    auto logger = MYLOG_LOG_NAME(i.name);
+                    // 这里使用高等级(不会用到的等级)来表示删除
+                    logger->setLevel((LogLevel::Level)100);
+                    // 清空，相当于删除，下次默认使用root打印
                     logger->clearAppenders();
-                    for (auto& a : i.appenders) {
-                        mylog::LogAppender::ptr ap;
-                        if (a.type == 1) {
-                            ap.reset(new FileLogAppender(a.file));
-                        } else if (a.type == 2) {
-                            ap.reset(new StdoutLogAppender);
-                        }
-                        ap->setLevel(a.level);
-                        if (!a.formatter.empty()) {
-                            LogFormatter::ptr fmt(new LogFormatter(a.formatter));
-                            if (!fmt->isError()) {
-                                ap->setFormatter(fmt);
-                            } else {
-                                std::cout << "log.name = " << i.name << "appender type = " << a.type
-                                          << " formatter = " << a.formatter.c_str() << "is invalid"
-                                          << "\n";
-                            }
-                        }
-
-                        logger->addAppender(ap);
-                    }
                 }
-
-                // 删除
-                for (auto& i : old_value) {
-                    auto it = new_value.find(i);
-                    if (it == new_value.end()) {
-                        // 删除旧的
-                        auto logger = MYLOG_LOG_NAME(i.name);
-                        // 这里使用高等级(不会用到的等级)来表示删除
-                        logger->setLevel((LogLevel::Level)100);
-                        // 清空，相当于删除，下次默认使用root打印
-                        logger->clearAppenders();
-                    }
-                }
-            });
+            }
+        });
     }
 };
 std::string LoggerManager::toYamlString() {

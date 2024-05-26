@@ -1,3 +1,11 @@
+/**
+ * @file: config.h
+ * @author: william
+ * @date: 2024-02-18
+ * @version: 0.1
+ * @brief: 日志系统配置模块
+ */
+
 #ifndef __MYLOG_CONFIG_H__
 #define __MYLOG_CONFIG_H__
 
@@ -17,6 +25,7 @@
 #include <vector>
 
 #include "log.h"
+#include "thread.h"
 
 namespace mylog {
 // 配置基类
@@ -258,6 +267,8 @@ template <class T, class FromStr = LexicalCast<std::string, T>,
           class ToStr = LexicalCast<T, std::string>>  // 特化的类型转换
 class ConfigVar : public ConfigVarBase {
    public:
+    // 配置文件读多写少，使用读写锁
+    typedef myserver::RWMutex RWMutexType;
     typedef std::shared_ptr<ConfigVar> ptr;
     // 事件回调
     typedef std::function<void(const T& old_value, const T& new_value)> on_change_cb;
@@ -269,6 +280,8 @@ class ConfigVar : public ConfigVarBase {
         // 类型转换可能会有异常安全问题
         try {
             // return boost::lexical_cast<std::string>(m_val);
+            // 加读锁
+            RWMutexType::ReadLock lock(m_mutex);
             return ToStr()(m_val);
         } catch (std::exception& e) {
             MYLOG_LOG_ERROR(MYLOG_LOG_ROOT())
@@ -289,41 +302,81 @@ class ConfigVar : public ConfigVarBase {
         return false;
     }
 
-    const T getValue() const { return m_val; }
+    // 加锁会影响内部的改变，所以这里去掉const
+    const T getValue() {
+        // 加读锁
+        RWMutexType::ReadLock lock(m_mutex);
+        return m_val;
+    }
     void setValue(const T& v) {
-        // 没有发生变化的情况
-        if (v == m_val) {
-            return;
+        // 局部域，出域时自动析构释放锁
+        {
+            // 加读锁
+            RWMutexType::ReadLock lock(m_mutex);
+            // 没有发生变化的情况
+            if (v == m_val) {
+                return;
+            }
+            for (auto& i : m_cbs) {
+                i.second(m_val, v);
+            }
         }
-        for (auto& i : m_cbs) {
-            i.second(m_val, v);
-        }
+
+        // 加写锁
+        RWMutexType::WriteLock lock(m_mutex);
         m_val = v;
     }
     std::string getTypeName() const override { return typeid(T).name(); }
 
-    void addListener(uint64_t key, on_change_cb cb) { m_cbs[key] = cb; }
-    void delListener(uint64_t key, on_change_cb) { m_cbs.erase(key); }
+    // void addListener(uint64_t key, on_change_cb cb) { m_cbs[key] = cb; }
+    uint64_t addListener(on_change_cb cb) {
+        // 使用自动生成的key，保证唯一性
+        static uint64_t s_fun_id = 0;
+        // 加写锁
+        RWMutexType::WriteLock lock(m_mutex);
+        ++s_fun_id;
+        m_cbs[s_fun_id] = cb;
+        return s_fun_id;
+    }
+
+    void delListener(uint64_t key, on_change_cb) {
+        // 加写锁
+        RWMutexType::WriteLock lock(m_mutex);
+        m_cbs.erase(key);
+    }
     on_change_cb getListener(uint64_t key) {
+        // 加读锁
+        RWMutexType::ReadLock lock(m_mutex);
         auto it = m_cbs.find(key);
         return it == m_cbs.end() ? nullptr : it->second;
     }
-    void clearListener() { m_cbs.clear(); }
+    void clearListener() {
+        // 加写锁
+        RWMutexType::WriteLock lock(m_mutex);
+        m_cbs.clear();
+    }
 
    private:
     T m_val;
     // 变更回调函数组 key要求唯一，一般使用hash
     std::map<uint64_t, on_change_cb> m_cbs;
+
+    // 读写锁
+    RWMutexType m_mutex;
 };
 
 class Config {
    public:
+    // 读多写少，使用读写锁
+    typedef myserver::RWMutex RWMutexType;
     typedef std::unordered_map<std::string, ConfigVarBase::ptr> ConfigVarMap;
 
     template <class T>
     // 这里的typename用于向编译器强调这是类型，因为有情况下 :: 后面是变量名
     static typename ConfigVar<T>::ptr Lookup(const std::string& name, const T& default_value,
                                              const std::string& description = "") {
+        // 加写锁
+        RWMutexType::WriteLock lock(GetMutex());
         auto it = GetDatas().find(name);
         if (it != GetDatas().end()) {
             auto tmp = std::dynamic_pointer_cast<ConfigVar<T>>(it->second);
@@ -358,6 +411,8 @@ class Config {
     // 查找对应类
     template <class T>
     static typename ConfigVar<T>::ptr Lookup(const std::string& name) {
+        // 加读锁
+        RWMutexType::ReadLock lock(GetMutex());
         auto it = GetDatas().find(name);
         if (it == GetDatas().end()) {
             return nullptr;
@@ -372,12 +427,25 @@ class Config {
     // 这里只能返回指针或引用(ConfigVarBase为抽象类)返回
     static ConfigVarBase::ptr LookupBase(const std::string& name);
 
+    // 获取配置的回调
+    static void Visit(std::function<void(ConfigVarBase::ptr)> cb);
    private:
-    // 这里直接使用静态的s_datas可能会存在初始化问题，在使用时还未初始化，导致错误，改为get方法获取
+    /**
+     * @note 这里不能使用static变量，因为静态变量的初始化顺序是不确定的，导致可能导致错误
+     * 这里使用静态方法获取数据，保证初始化顺序，保证正确性
+     */
     // static ConfigVarMap s_datas;
     static ConfigVarMap& GetDatas() {
         static ConfigVarMap s_datas;
         return s_datas;
+    }
+
+    /**
+     * @note 这里读写锁也需要使用静态方法，保证初始化顺序，保证正确性
+    */
+    static RWMutexType& GetMutex() {
+        static RWMutexType s_mutex;
+        return s_mutex;
     }
 };
 

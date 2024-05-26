@@ -1,3 +1,10 @@
+/**
+ * @file thread.h
+ * @author William
+ * @date 2024-05-19
+ * @version 0.1
+ * @brief 线程相关的类和函数
+*/
 #ifndef __MYSERVER_THREAD_H__
 #define __MYSERVER_THREAD_H__
 

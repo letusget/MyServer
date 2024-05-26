@@ -2,6 +2,7 @@
  * @file util.h
  * @author william
  * @date 2024-01-28
+ * @version 0.1
  * @brief 日志工具类
  */
 #ifndef __MYLOG_UTIL_H__

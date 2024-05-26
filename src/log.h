@@ -1,3 +1,10 @@
+/**
+ * @file log.h
+ * @author William <<EMAIL>>
+ * @date 2014-01-27
+ * @version 0.1
+ * @brief 日志模块  
+*/
 #ifndef __MYLOG_LOG_H_
 #define __MYLOG_LOG_H_
 

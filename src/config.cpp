@@ -7,6 +7,8 @@ namespace mylog {
 mylog::ConfigVarBase::~ConfigVarBase() {}
 
 ConfigVarBase::ptr Config::LookupBase(const std::string& name) {
+    // 加读锁
+    RWMutexType::ReadLock lock(GetMutex());
     auto it = GetDatas().find(name);
     return it == GetDatas().end() ? nullptr : it->second;
 }
@@ -52,6 +54,15 @@ void Config::LoadFromYaml(const YAML::Node& root) {
                 var->fromString(ss.str());
             }
         }
+    }
+}
+
+void Config::Visit(std::function<void(ConfigVarBase::ptr)> cb) {
+    // 加读锁
+    RWMutexType::ReadLock lock(GetMutex());
+    ConfigVarMap& datas = GetDatas();
+    for (auto& i : datas) {
+        cb(i.second);
     }
 }
 
