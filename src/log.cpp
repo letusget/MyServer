@@ -8,6 +8,7 @@
 #include <map>
 
 #include "config.h"
+#include "util.h"
 
 namespace mylog {
 
@@ -310,10 +311,11 @@ void Logger::setFormatter(const std::string& val) {
     // 在setFormatter内部加锁，缩小锁的范围
     setFormatter(new_val);
 }
-LogFormatter::ptr Logger::getFormatter() { 
+LogFormatter::ptr Logger::getFormatter() {
     // 加锁
     MutexType::Lock lock(m_mutex);
-    return m_formatter; }
+    return m_formatter;
+}
 
 std::string Logger::toYamlString() {
     // 加锁
@@ -343,13 +345,23 @@ void Logger::error(LogEvent::ptr event) { log(LogLevel::ERROR, event); }
 void Logger::fatal(LogEvent::ptr event) { log(LogLevel::FATAL, event); }
 
 // TODO reopen() 优化
-FileLogAppender::FileLogAppender(const std::string& filename) : m_filename(filename) { reopen(); }
+FileLogAppender::FileLogAppender(const std::string& filename) : m_filename(filename),m_lastTime(0) { reopen(); }
 
 void FileLogAppender::log(Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) {
     if (level >= m_level) {
+        // 每秒钟重新打开文件，用于感知日志文件是否被意外关闭、重命名等
+        uint64_t now = event->getTime();
+        if (now >= m_lastTime + 3) {
+            // 重新打开文件
+            reopen();
+            m_lastTime = now;
+        }
         // 加锁
         MutexType::Lock lock(m_mutex);
-        m_filestream << m_formatter->format(logger, level, event);
+        if (!(m_filestream << m_formatter->format(logger, level, event))) {
+            // 打开文件失败
+            std::cout << "FileLogAppender log error: " << m_filename << "\n";
+        }
     }
 }
 
@@ -377,10 +389,12 @@ bool FileLogAppender::reopen() {
     if (m_filestream) {
         m_filestream.close();
     }
-    m_filestream.open(m_filename);
-    // !! 可以将非0转1， 0保持
-    return !!m_filestream;
+    // m_filestream.open(m_filename);
+    // // !! 可以将非0转1， 0保持
+    // return !!m_filestream;
+    return myserver::FSUtil::OpenForWrite(m_filestream, m_filename, std::ios::app);
 }
+
 void StdoutLogAppender::log(Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) {
     if (level >= m_level) {
         // 加锁
@@ -390,7 +404,7 @@ void StdoutLogAppender::log(Logger::ptr logger, LogLevel::Level level, LogEvent:
 }
 
 std::string StdoutLogAppender::toYamlString() {
-    // 加锁 
+    // 加锁
     MutexType::Lock lock(m_mutex);
     YAML::Node node;
     node["type"] = "StdoutLogAppender";

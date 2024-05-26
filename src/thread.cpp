@@ -102,7 +102,7 @@ void* Thread::run(void* arg) {
     // 设置线程局部存储变量
     t_thread              = thread;
     t_current_thread_name = thread->m_name;
-    thread->m_id          = mylog::GetThreadId();
+    thread->m_id          = myserver::GetThreadId();
     // 设置线程名称 pthread_setname_np最大支持16个字符
     pthread_setname_np(pthread_self(), thread->m_name.substr(0, 15).c_str());
 

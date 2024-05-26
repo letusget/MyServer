@@ -20,7 +20,7 @@
 #define MYLOG_LOG_LEVEL(logger, level)                                                                                 \
     if (logger->getLevel() <= level)                                                                                   \
     mylog::LogEventWrap(mylog::LogEvent::ptr(new mylog::LogEvent(logger, level, __FILE__, __LINE__, 0,                 \
-                                                                 mylog::GetThreadId(), mylog::GetFiberId(), time(0)))) \
+                                                                 myserver::GetThreadId(), myserver::GetFiberId(), time(0)))) \
         .getSS()
 
 // 使用logger写入debug级别的流式日志
@@ -38,7 +38,7 @@
 #define MYLOG_LOG_FMT_LEVEL(logger, level, fmt, ...)                                                                   \
     if (logger->getLevel() <= level)                                                                                   \
     mylog::LogEventWrap(mylog::LogEvent::ptr(new mylog::LogEvent(logger, level, __FILE__, __LINE__, 0,                 \
-                                                                 mylog::GetThreadId(), mylog::GetFiberId(), time(0)))) \
+                                                                 myserver::GetThreadId(), myserver::GetFiberId(), time(0)))) \
         .getEvent()                                                                                                    \
         ->format(fmt, __VA_ARGS__)
 
@@ -265,6 +265,9 @@ class FileLogAppender : public LogAppender {
    private:
     std::string m_filename;
     std::ofstream m_filestream;
+
+    // 定时器，用于定时重打开文件
+    uint64_t m_lastTime = 0;
 };
 
 // 日志管理器
