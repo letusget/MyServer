@@ -39,16 +39,29 @@ void fun3() {
     }
 }
 int main() {
+    YAML::Node root = YAML::LoadFile("/home/william/projects/serverproject/MyServer/bin/conf/log_test_thread.yml");
+    mylog::Config::LoadFromYaml(root);
+
     MYLOG_LOG_INFO(g_logger) << "main thread test start";
     std::vector<myserver::Thread::ptr> threads;
-    for (int i = 0; i < 10; i++) {
-        myserver::Thread::ptr t(new myserver::Thread(&fun1, "name_ " + std::to_string(i)));
-        threads.push_back(t);
+    // for (int i = 0; i < 10; i++) {
+    //     myserver::Thread::ptr t(new myserver::Thread(&fun1, "name_ " + std::to_string(i)));
+    //     threads.push_back(t);
+    // }
+    for (int i = 0; i < 2; i++) {
+        myserver::Thread::ptr t1(new myserver::Thread(&fun2, "name_ " + std::to_string(i * 2)));
+        myserver::Thread::ptr t2(new myserver::Thread(&fun3, "name_ " + std::to_string(i * 2 + 1)));
+
+        threads.push_back(t1);
+        threads.push_back(t2);
     }
 
     // sleep(20);
 
-    for (int i = 0; i < 10; i++) {
+    // for (int i = 0; i < 10; i++) {
+    //     threads[i]->join();
+    // }
+    for (size_t i = 0; i < threads.size(); i++) {
         threads[i]->join();
     }
 

@@ -24,19 +24,6 @@ Semaphore::~Semaphore() {}
 
 // 等待信号量
 void Semaphore::wait() {
-    // while (true)
-    // {
-    //     // sem_wait返回0表示获取成功，返回-1表示获取失败，errno=EINTR表示被信号打断，需要重试
-    //     if(!sem_wait(&m_semaphore)) {
-    //         return;
-    //     }
-    //     // 重试
-    //     if(errno!= EINTR) {
-    //         MYLOG_LOG_WARN(g_logger) << "sem_wait failed, retrying..., error code: " << errno;
-    //         throw std::logic_error("sem_wait failed");
-    //     }
-    // }
-
     // sem_wait返回0表示获取成功，返回-1表示获取失败，
     while (sem_wait(&m_semaphore)) {
         // errno=EINTR表示被信号打断，需要重试
@@ -49,11 +36,6 @@ void Semaphore::wait() {
 
 // 提醒信号量
 void Semaphore::notify() {
-    // if (sem_post(&m_semaphore)) {
-    //     MYLOG_LOG_ERROR(g_logger) << "sem_post failed, error code: " << errno;
-    //     throw std::logic_error("sem_post failed");
-    // }
-
     // sem_post 返回0表示获取成功，返回-1表示获取失败，
     while (sem_post(&m_semaphore))
     {
@@ -69,12 +51,10 @@ void Semaphore::notify() {
 // 获取当前线程对象指针
 Thread* Thread::GetThis() { return t_thread; }
 
+// 获取当前线程名称
 const std::string& Thread::GetName() { return t_current_thread_name; }
 
-// 获取当前线程名称
-const std::string& Thread::GetCurrentThreadName() { return t_current_thread_name; }
-
-void Thread::SetCurrentThreadName(const std::string& name) {
+void Thread::SetName(const std::string& name) {
     if (t_thread) {
         t_thread->m_name = name;
     }

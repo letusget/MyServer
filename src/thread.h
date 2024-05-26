@@ -273,11 +273,11 @@ class Thread {
     void join();
     // 获取当前线程对象指针
     static Thread* GetThis();
-    static const std::string& GetName();
     // 获取当前线程名称
-    static const std::string& GetCurrentThreadName();
+    static const std::string& GetName();
+    
     // 设置当前线程名称
-    static void SetCurrentThreadName(const std::string& name);
+    static void SetName(const std::string& name);
 
    private:
     // 禁用拷贝构造函数和赋值运算符，防止线程对象被复制
