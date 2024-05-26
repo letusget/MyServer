@@ -16,7 +16,7 @@
 // typedef pthread_t tid_t;
 namespace myserver {
 
-// 封装信号量对象
+// 封装信号量对象：适合于线程间通信
 class Semaphore {
    public:
     Semaphore(uint32_t count = 0);
@@ -206,7 +206,7 @@ class NullMutex {  // 空互斥锁
     void unlock() {}
 };
 
-// 互斥锁对象 不分读写锁
+// 互斥锁对象 不分读写锁：适合读写比例不高的场景
 class Mutex {
    public:
     typedef ScopedLockImpl<Mutex> Lock;
@@ -223,7 +223,7 @@ class Mutex {
     pthread_mutex_t m_mutex;
 };
 
-// 互斥锁对象 分读写锁
+// 互斥锁对象 分读写锁：适合读多写少的场景
 class RWMutex {
    public:
     typedef ReadScopedLockImpl<RWMutex> ReadLock;
@@ -257,6 +257,22 @@ class NullRWMutex {  // 空读写锁
     void rlock() {}
     void wlock() {}
     void unlock() {}
+};
+
+// 自旋锁对象: 适用于短期内频繁加锁和解锁的场景(日志冲突时间短)
+class SpinLock {
+   public:
+    typedef ScopedLockImpl<SpinLock> Lock;
+
+    SpinLock() { pthread_spin_init(&m_mutex, 0); }
+    ~SpinLock() { pthread_spin_destroy(&m_mutex); }
+
+    void lock() { pthread_spin_lock(&m_mutex); }
+
+    void unlock() { pthread_spin_unlock(&m_mutex); }
+
+   private:
+    pthread_spinlock_t m_mutex;
 };
 
 // 封装线程对象

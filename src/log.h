@@ -171,7 +171,7 @@ class LogAppender {
    public:
     typedef std::shared_ptr<LogAppender> ptr;
     // 方便快速切换锁
-    typedef myserver::Mutex MutexType;
+    typedef myserver::SpinLock MutexType;
 
     virtual ~LogAppender();
     virtual void log(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) = 0;
@@ -203,7 +203,7 @@ class Logger : public std::enable_shared_from_this<Logger> {
    public:
     typedef std::shared_ptr<Logger> ptr;
     // 方便快速切换锁
-    typedef myserver::Mutex MutexType;
+    typedef myserver::SpinLock MutexType;
     Logger(const std::string& name = "root");
     //  ~Logger();
 
@@ -271,7 +271,7 @@ class FileLogAppender : public LogAppender {
 class LoggerManager {
    public:
     // 方便快速切换锁
-    typedef myserver::Mutex MutexType;
+    typedef myserver::SpinLock MutexType;
     LoggerManager();
     Logger::ptr getLogger(const std::string& name);
     void init();
