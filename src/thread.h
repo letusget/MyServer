@@ -8,6 +8,7 @@
 #include <semaphore.h>
 #include <stdint.h>
 
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <string>
@@ -275,6 +276,32 @@ class SpinLock {
     pthread_spinlock_t m_mutex;
 };
 
+// 原子操作锁对象: 适用于短期内频繁加锁和解锁的场景(日志冲突时间短)
+class CASLock {    
+   public:
+    typedef ScopedLockImpl<CASLock> Lock;
+    CASLock() {
+        m_mutex.clear();
+    }
+    ~CASLock() {
+        // 解锁
+        unlock();
+    }
+
+    void lock() {
+        while(std::atomic_flag_test_and_set_explicit(&m_mutex, std::memory_order_acquire)) {
+            // 自旋等待
+        }
+    }
+
+    void unlock() {
+        std::atomic_flag_clear_explicit(&m_mutex, std::memory_order_release); 
+    }
+   private:
+    // 原子操作锁对象, volatile保证原子性, 每次都从内存中读取值
+    volatile std::atomic_flag m_mutex = ATOMIC_FLAG_INIT;
+};
+
 // 封装线程对象
 class Thread {
    public:
@@ -291,7 +318,7 @@ class Thread {
     static Thread* GetThis();
     // 获取当前线程名称
     static const std::string& GetName();
-    
+
     // 设置当前线程名称
     static void SetName(const std::string& name);
 
