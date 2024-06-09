@@ -300,4 +300,4 @@ typedef mylog::Singleton<LoggerManager> LoggerMgr;
 
 }  // namespace mylog
 
-#endif
+#endif  // __MYLOG_LOG_H_

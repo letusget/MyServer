@@ -23,4 +23,4 @@ class SingletonPtr {
 
 }  // namespace mylog
 
-#endif
+#endif  // __MYLOG_SINGLETON_H__

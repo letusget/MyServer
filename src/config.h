@@ -451,4 +451,4 @@ class Config {
 
 }  // namespace mylog
 
-#endif
+#endif // __MYLOG_CONFIG_H__

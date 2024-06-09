@@ -44,4 +44,4 @@ class FSUtil {
 
 }  // namespace myserver
 
-#endif
+#endif // __MYLOG_UTIL_H__

@@ -354,4 +354,4 @@ class Thread {
 
 }  // namespace myserver
 
-#endif
+#endif // __MYSERVER_THREAD_H__
