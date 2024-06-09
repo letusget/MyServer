@@ -14,24 +14,76 @@
 #include <sstream>
 #include <vector>
 
+#include "log.h"
+
 namespace myserver {
 
-/**
- * 获取当前线程的ID(Linux下唯一标识符)
- * @return 线程ID
- * @note 这里使用syscall(SYS_gettid)获取线程ID，它是Linux系统调用，它返回的是当前线程的唯一标识符，
- * 不同进程间的线程ID可能相同，但它保证在同一个进程中是唯一的。
-*/
+// 本系统的日志对象为system
+mylog::Logger::ptr g_logger = MYLOG_LOG_NAME("system");
+
 pid_t GetThreadId() { return syscall(SYS_gettid); }
 
 u_int32_t GetFiberId() { return 0; }
+
+void Backtrace(std::vector<std::string>& bt, int size, int skip) {
+    // 参数检查, 这里对于错误参数直接抛出异常并返回
+    if (size <= 0) {
+        throw std::invalid_argument("Invalid size: must be greater than 0");
+    }
+
+    if (skip < 0 || skip >= size) {
+        throw std::invalid_argument("Invalid skip: must be between 0 and size-1");
+    }
+
+    // 这里不使用backtrace的指针方式(不使用栈空间)，考虑到协程的栈内存有限，为节省内存，使用堆空间来存储栈信息
+    void** array = (void**)malloc(sizeof(void*) * size);
+    if (array == nullptr) {
+        MYLOG_LOG_ERROR(g_logger) << "malloc failed in Backtrace";
+        throw std::bad_alloc();
+    }
+
+    // 获取堆栈地址信息
+    size_t len = ::backtrace(array, size);
+
+    // 将堆栈帧地址转换为函数名和偏移量的字符串
+    char** strings = backtrace_symbols(array, len);
+    if (strings == nullptr) {
+        MYLOG_LOG_ERROR(g_logger) << "backtrace_symbols failed";
+        free(array);
+        throw std::bad_alloc();
+    }
+
+    try {
+        for (size_t i = skip; i < len; ++i) {
+            bt.push_back(strings[i]);
+        }
+    } catch (...) {
+        free(strings);
+        free(array);
+        throw;  // 重新抛出异常
+    }
+
+    // 释放堆栈信息
+    free(strings);
+    free(array);
+}
+
+std::string BacktraceToString(int size, int skip, const std::string& prefix) {
+    std::vector<std::string> bt;
+    Backtrace(bt, size, skip);
+    std::ostringstream oss;
+    for (auto& s : bt) {
+        oss << prefix << s << "\n";
+    }
+    return oss.str();
+}
 
 /**
  * 列出指定目录下符合后缀的文件名
  * @param files 输出的文件名列表
  * @param path 目录路径
  * @param subfix 后缀名
-*/
+ */
 void FSUtil::ListAllFiles(std::vector<std::string>& files, const std::string& path, const std::string& subfix) {
     if (access(path.c_str(), F_OK) != 0) {
         return;
@@ -69,7 +121,7 @@ void FSUtil::ListAllFiles(std::vector<std::string>& files, const std::string& pa
  * @param path 文件路径
  * @param st 文件属性结构体
  * @return 成功返回true，失败返回false
-*/
+ */
 static int __lstat(const char* path, struct stat* st = nullptr) {
     struct stat lst;
     // 这里使用lstat是因为stat不包含符号链接的属性
@@ -84,12 +136,12 @@ static int __lstat(const char* path, struct stat* st = nullptr) {
  * 创建目录
  * @param dirname 目录路径
  * @return 成功返回0，失败返回-1
-*/
+ */
 static int __mkdir(const char* dirname) {
     if (access(dirname, F_OK) == 0) {
         return 0;
     }
-    
+
     // 使用mkdir仅可以创建单级目录
     // 权限: 00700 | 00070 | 00004 | 00001 = 00775
     return mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
@@ -99,7 +151,7 @@ static int __mkdir(const char* dirname) {
  * 递归创建目录
  * @param path 目录路径
  * @return 成功返回true，失败返回false
-*/
+ */
 bool FSUtil::Mkdir(const std::string& path) {
     if (__lstat(path.c_str(), nullptr) == 0) {
         return true;
@@ -134,7 +186,7 @@ bool FSUtil::Mkdir(const std::string& path) {
  * @param path 目录路径
  * @return 成功返回true，失败返回false
  * @note 如果是文件，则直接删除；如果是空目录，则删除；如果是非空目录，则递归删除其子目录
-*/
+ */
 bool FSUtil::Remove(const std::string& path) {
     struct stat st;
     if (lstat(path.c_str(), &st)) {
@@ -171,7 +223,7 @@ bool FSUtil::Remove(const std::string& path) {
  * @param newpath 新路径
  * @return 成功返回true，失败返回false
  * @note 如果新路径已存在，则先删除；然后将旧路径重命名为新路径
-*/
+ */
 bool FSUtil::Rename(const std::string& oldpath, const std::string& newpath) {
     if (!Remove(newpath)) {
         return false;
@@ -183,7 +235,7 @@ bool FSUtil::Rename(const std::string& oldpath, const std::string& newpath) {
  * 检查指定的PID文件是否存在一个正在运行的进程
  * @param pidfile PID文件路径
  * @return 存在正在运行的进程返回true，否则返回false
-*/
+ */
 bool FSUtil::IsRunningPidfile(const std::string& pidfile) {
     if (__lstat(pidfile.c_str(), nullptr) != 0) {
         return false;
@@ -214,7 +266,7 @@ bool FSUtil::IsRunningPidfile(const std::string& pidfile) {
  * @param exist 是否存在
  * @return 成功返回true，失败返回false
  * @note 如果exist为false且文件不存在，则不做任何操作；否则，使用unlik函数删除文件
-*/
+ */
 bool FSUtil::Unlink(const std::string& filename, bool exist) {
     if (!exist && __lstat(filename.c_str(), nullptr)) {
         return true;
@@ -227,8 +279,8 @@ bool FSUtil::Unlink(const std::string& filename, bool exist) {
  * @param path 文件路径
  * @param realpath 输出的绝对路径
  * @return 成功返回true，失败返回false
- * @note 调用realpath函数获取文件的绝对路径，realpath函数会将符号链接转换为真实路径 
-*/
+ * @note 调用realpath函数获取文件的绝对路径，realpath函数会将符号链接转换为真实路径
+ */
 bool FSUtil::Realpath(const std::string& path, std::string& realpath) {
     if (__lstat(path.c_str(), nullptr)) {
         return false;
@@ -249,7 +301,7 @@ bool FSUtil::Realpath(const std::string& path, std::string& realpath) {
  * @param to 符号链接路径
  * @return 成功返回true，失败返回false
  * @note 如果to已存在，则先删除；然后创建符号链接
-*/
+ */
 bool FSUtil::Syslink(const std::string& from, const std::string& to) {
     if (!Remove(to)) {
         return false;
@@ -260,9 +312,9 @@ bool FSUtil::Syslink(const std::string& from, const std::string& to) {
 /**
  * 获取路径的目录部分
  * @param path 路径
- * @return 目录部分 
+ * @return 目录部分
  * @note 路径最后一个'/'之前的部分
-*/
+ */
 std::string FSUtil::Dirname(const std::string& path) {
     if (path.empty()) {
         return ".";
@@ -280,9 +332,9 @@ std::string FSUtil::Dirname(const std::string& path) {
 /**
  * 获取路径的文件名部分
  * @param path 路径
- * @return 文件名部分 
+ * @return 文件名部分
  * @note 路径最后一个'/'之后的部分
-*/
+ */
 std::string FSUtil::Basename(const std::string& path) {
     if (path.empty()) {
         return path;
@@ -301,7 +353,7 @@ std::string FSUtil::Basename(const std::string& path) {
  * @param filename 文件路径
  * @param mode 打开模式
  * @return 成功返回true，失败返回false
-*/
+ */
 bool FSUtil::OpenForRead(std::ifstream& ifs, const std::string& filename, std::ios_base::openmode mode) {
     ifs.open(filename.c_str(), mode);
     return ifs.is_open();
@@ -313,7 +365,7 @@ bool FSUtil::OpenForRead(std::ifstream& ifs, const std::string& filename, std::i
  * @param filename 文件路径
  * @param mode 打开模式
  * @return 成功返回true，失败返回false
-*/
+ */
 bool FSUtil::OpenForWrite(std::ofstream& ofs, const std::string& filename, std::ios_base::openmode mode) {
     ofs.open(filename.c_str(), mode);
     if (!ofs.is_open()) {

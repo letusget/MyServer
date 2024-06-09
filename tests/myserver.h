@@ -6,10 +6,12 @@
 #include <vector>
 #include <map>
 #include <thread> 
-#include "../src/util.h"
-#include "../src/thread.h"
-#include "../src/singleton.h"
-#include "../src/log.h"
-#include "../src/config.h"
+#include "util.h"
+#include "thread.h"
+#include "singleton.h"
+#include "log.h"
+#include "config.h"
+#include "util.h"
+#include "macro.h"
 
 #endif // __MYSERVER_H_
