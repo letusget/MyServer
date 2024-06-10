@@ -2,7 +2,7 @@
 
 #include "myserver.h"
 
-mylog::Logger::ptr g_logger = MYLOG_LOG_ROOT();
+static mylog::Logger::ptr g_logger = MYLOG_LOG_ROOT();
 
 void test_assert() {
     MYLOG_LOG_INFO(g_logger) << myserver::BacktraceToString(10, 2, "\t");

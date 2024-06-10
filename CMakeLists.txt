@@ -20,6 +20,7 @@ set(LIB_SRC
     src/util.cpp
     src/config.cpp
     src/thread.cpp
+    src/fiber.cpp
     tests/myserver.h     # 为了测试方便，添加一个头文件，用于引入所有头文件进行测试
     )
 
@@ -66,6 +67,11 @@ add_executable(test_util tests/test_util.cpp)
 add_dependencies(test_util myserver)
 force_redefine_file_macro_for_sources(test_util)
 target_link_libraries(test_util ${LIBS} yaml-cpp)
+
+add_executable(test_fiber tests/test_fiber.cpp)
+add_dependencies(test_fiber myserver)
+force_redefine_file_macro_for_sources(test_fiber)
+target_link_libraries(test_fiber ${LIBS} yaml-cpp)
 
 # 设置二进制和库的输出路径
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)

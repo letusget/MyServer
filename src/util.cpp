@@ -14,14 +14,18 @@
 #include <sstream>
 #include <vector>
 
+#include "fiber.h"
 #include "log.h"
 
 namespace myserver {
 
 // 本系统的日志对象为system
-mylog::Logger::ptr g_logger = MYLOG_LOG_NAME("system");
+static mylog::Logger::ptr g_logger = MYLOG_LOG_NAME("system");
 
-pid_t GetThreadId() { return syscall(SYS_gettid); }
+pid_t GetThreadId() {
+    // return syscall(SYS_gettid);
+    return myserver::Fiber::GetFiberId();
+}
 
 u_int32_t GetFiberId() { return 0; }
 
