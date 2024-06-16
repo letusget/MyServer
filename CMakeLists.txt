@@ -21,6 +21,7 @@ set(LIB_SRC
     src/config.cpp
     src/thread.cpp
     src/fiber.cpp
+    src/scheduler.cpp
     tests/myserver.h     # 为了测试方便，添加一个头文件，用于引入所有头文件进行测试
     )
 
