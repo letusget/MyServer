@@ -1,3 +1,20 @@
+# Ignore specific build artifacts
+build/**/*.o
+build/**/*.obj
+build/**/*.so
+build/**/*.dylib
+build/**/*.dll
+build/**/*.a
+build/**/*.lib
+build/**/*.out
+build/**/*.exe
+
+# CMake specific files
+build/CMakeFiles/
+build/CMakeCache.txt
+build/cmake_install.cmake
+build/Makefile
+
 # Prerequisites
 *.d
 
@@ -12,7 +29,6 @@
 *.pch
 
 # Compiled Dynamic libraries
-*.so
 *.dylib
 *.dll
 
@@ -30,3 +46,9 @@
 *.exe
 *.out
 *.app
+
+# VS Code directory
+.vscode/
+
+# local record
+*.txt
