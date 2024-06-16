@@ -3,8 +3,8 @@
  * @author William <<EMAIL>>
  * @date 2014-01-27
  * @version 0.1
- * @brief 日志模块  
-*/
+ * @brief 日志模块
+ */
 #ifndef __MYLOG_LOG_H_
 #define __MYLOG_LOG_H_
 
@@ -24,10 +24,11 @@
 #include "util.h"
 
 // 写入level级别的流式日志
-#define MYLOG_LOG_LEVEL(logger, level)                                                                                 \
-    if (logger->getLevel() <= level)                                                                                   \
-    mylog::LogEventWrap(mylog::LogEvent::ptr(new mylog::LogEvent(logger, level, __FILE__, __LINE__, 0,                 \
-                                                                 myserver::GetThreadId(), myserver::GetFiberId(), time(0)))) \
+#define MYLOG_LOG_LEVEL(logger, level)                                                                           \
+    if (logger->getLevel() <= level)                                                                             \
+    mylog::LogEventWrap(                                                                                         \
+        mylog::LogEvent::ptr(new mylog::LogEvent(logger, level, __FILE__, __LINE__, 0, myserver::GetThreadId(),  \
+                                                 myserver::GetFiberId(), time(0), myserver::Thread::GetName()))) \
         .getSS()
 
 // 使用logger写入debug级别的流式日志
@@ -42,11 +43,12 @@
 #define MYLOG_LOG_FATAL(logger) MYLOG_LOG_LEVEL(logger, mylog::LogLevel::FATAL)
 
 // 使用logger写入level级别的日志 (格式化, printf)
-#define MYLOG_LOG_FMT_LEVEL(logger, level, fmt, ...)                                                                   \
-    if (logger->getLevel() <= level)                                                                                   \
-    mylog::LogEventWrap(mylog::LogEvent::ptr(new mylog::LogEvent(logger, level, __FILE__, __LINE__, 0,                 \
-                                                                 myserver::GetThreadId(), myserver::GetFiberId(), time(0)))) \
-        .getEvent()                                                                                                    \
+#define MYLOG_LOG_FMT_LEVEL(logger, level, fmt, ...)                                                             \
+    if (logger->getLevel() <= level)                                                                             \
+    mylog::LogEventWrap(                                                                                         \
+        mylog::LogEvent::ptr(new mylog::LogEvent(logger, level, __FILE__, __LINE__, 0, myserver::GetThreadId(),  \
+                                                 myserver::GetFiberId(), time(0), myserver::Thread::GetName()))) \
+        .getEvent()                                                                                              \
         ->format(fmt, __VA_ARGS__)
 
 // 使用logger写入debug级别的日志 (格式化, printf)
@@ -84,7 +86,7 @@ class LogEvent {
    public:
     typedef std::shared_ptr<LogEvent> ptr;
     LogEvent(std::shared_ptr<Logger> logger, LogLevel::Level level, const char* file, int32_t line, uint32_t elapse,
-             uint32_t thread_id, uint32_t fiber_id, uint64_t time);
+             uint32_t thread_id, uint32_t fiber_id, uint64_t time, const std::string& thread_name);
     //  ~LogEvent();
 
     const char* getFile() const { return m_file; }
@@ -92,6 +94,7 @@ class LogEvent {
     uint32_t getElapse() const { return m_elapse; }
     uint32_t getThreadId() const { return m_threadId; }
     uint32_t getFiberId() const { return m_fiberId; }
+    const std::string& getThreadName() const { return m_threadName; }
     uint64_t getTime() const { return m_time; }
     const std::string getContent() const { return m_ss.str(); }
     std::stringstream& getSS() { return m_ss; }
@@ -112,6 +115,8 @@ class LogEvent {
     uint32_t m_elapse = 0;
     // 线程ID
     uint32_t m_threadId = 0;
+    // 线程名
+    std::string m_threadName;
     // 协程ID
     uint32_t m_fiberId = 0;
     // 时间戳

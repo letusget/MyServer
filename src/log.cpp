@@ -18,7 +18,8 @@ const char* LogLevel::ToString(LogLevel::Level level) {
         // 每次使用 XX(name) 都会展开为一个 case 语句。
 #define XX(name)         \
     case LogLevel::name: \
-        return #name;
+        return #name;    \
+        break;
         XX(DEBUG);
         XX(INFO);
         XX(WARN);
@@ -81,6 +82,15 @@ class ThreadIdFormatItem : public LogFormatter::FormatItem {
     ThreadIdFormatItem(const std::string& str = "") {}
     virtual void format(std::ostream& os, Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) override {
         os << event->getThreadId();
+    }
+};
+
+// 线程名称
+class ThreadNameFormatItem : public LogFormatter::FormatItem {
+   public:
+    ThreadNameFormatItem(const std::string& str = "") {}
+    virtual void format(std::ostream& os, Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) override {
+        os << event->getThreadName();
     }
 };
 
@@ -149,7 +159,6 @@ class NameFormatItem : public LogFormatter::FormatItem {
    public:
     NameFormatItem(const std::string& str = "") {}
     virtual void format(std::ostream& os, Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) override {
-        // os << logger->getName();
         os << event->getLogger()->getName();
     }
 };
@@ -206,13 +215,15 @@ class TabFormatItem : public LogFormatter::FormatItem {
 };
 
 LogEvent::LogEvent(std::shared_ptr<Logger> logger, LogLevel::Level level, const char* file, int32_t line,
-                   uint32_t elapse, uint32_t thread_id, uint32_t fiber_id, uint64_t time)
+                   uint32_t elapse, uint32_t thread_id, uint32_t fiber_id, uint64_t time,
+                   const std::string& thread_name)
     : m_logger(logger),
       m_level(level),
       m_file(file),
       m_line(line),
       m_elapse(elapse),
       m_threadId(thread_id),
+      m_threadName(thread_name),
       m_fiberId(fiber_id),
       m_time(time) {}
 
@@ -220,7 +231,7 @@ Logger::Logger(const std::string& name) : m_name(name), m_level(LogLevel::DEBUG)
     // 定义常见日志格式
     // m_formatter.reset(new LogFormatter("%d  [%p]  < %f : %l >    %m  %n"));
     // m_formatter.reset(new LogFormatter("%d{%Y-%m-%d %H:%M:%S}%T %t %T %F %T[%p]%T[%c]%T %f:%l %T %m%n"));
-    m_formatter.reset(new LogFormatter("%d%T%t %T%F%T[%p]%T[%c]%T%f:%l %T%m%n"));
+    m_formatter.reset(new LogFormatter("%d%T%t%T%N%T%F%T[%p]%T[%c]%T%f:%l%T%m%n"));
 }
 
 // 虚函数必须要提供定义
@@ -435,7 +446,7 @@ void LogFormatter::init() {
     std::vector<std::tuple<std::string, std::string, int>> vec;
     std::string normal_str;
     // 遍历整个pattern, 分别解析 %d形式的 和 %d{ }形式的
-    for (size_t i = 0; i < m_pattern.size(); i++) {
+    for (size_t i = 0; i < m_pattern.size(); ++i) {
         // 去除 %
         if (m_pattern[i] != '%') {
             // 放入 % 之后的内容
@@ -453,7 +464,7 @@ void LogFormatter::init() {
 
         // % 之后的内容
         size_t n = i + 1;
-        // 记录解析状态： 1解析到{ ; 2解析到}
+        // 记录解析状态： 1解析到{ ; 0解析到}
         int format_status   = 0;
         size_t format_begin = 0;
 
@@ -462,7 +473,8 @@ void LogFormatter::init() {
         // 遍历 % 之后的内容,找到空格结束符，匹配{}
         while (n < m_pattern.size()) {
             // if (isspace(m_pattern[n])) {
-            if (!isalpha(m_pattern[n]) && m_pattern[n] != '{' && m_pattern[n] != '}') {
+            if (!format_status && (!isalpha(m_pattern[n]) && m_pattern[n] != '{' && m_pattern[n] != '}')) {
+                fstr = m_pattern.substr(i + 1, n - (i + 1));  // 跳过%
                 break;
             }
             if (format_status == 0) {
@@ -474,17 +486,23 @@ void LogFormatter::init() {
                     ++n;
                     continue;
                 }
-            }
-            if (format_status == 1) {
+            } else if (format_status == 1) {
                 if (m_pattern[n] == '}') {
                     // 获取 { } 之间的子串
                     fmt           = m_pattern.substr(format_begin + 1, n - (format_begin + 1));  // 跳过%
-                    format_status = 2;
+                    format_status = 0;
+                    ++n;
                     break;
                 }
             }
 
             ++n;
+
+            if (n == m_pattern.size()) {
+                if (fstr.empty()) {
+                    fstr = m_pattern.substr(i + 1);
+                }
+            }
         }
 
         if (format_status == 0) {
@@ -495,7 +513,7 @@ void LogFormatter::init() {
             }
 
             // 没有解析到 {} 的情况
-            fstr = m_pattern.substr(i + 1, n - (i + 1));
+            // fstr = m_pattern.substr(i + 1, n - (i + 1));
             vec.push_back(std::make_tuple(fstr, fmt, 1));
             i = n - 1;
         } else if (format_status == 1) {
@@ -503,15 +521,6 @@ void LogFormatter::init() {
             std::cout << "pattern parse error: " << m_pattern << " - " << m_pattern.substr(i) << " \n";
             m_error = true;
             vec.push_back(std::make_tuple("<<pattern_error>>", fmt, 0));
-        } else if (format_status == 2) {
-            if (!normal_str.empty()) {
-                // 放入 非% 的内容
-                vec.push_back(std::make_tuple(normal_str, "", 0));
-                normal_str.clear();
-            }
-            // 正常解析完 {}
-            vec.push_back(std::make_tuple(fstr, fmt, 1));
-            i = n - 1;
         }
     }
 
@@ -545,7 +554,7 @@ void LogFormatter::init() {
         XX("m", MessageFormatItem),  XX("p", LevelFormatItem),    XX("r", ElapseFormatItem),
         XX("c", NameFormatItem),     XX("t", ThreadIdFormatItem), XX("n", NewLineFormatItem),
         XX("d", DateTimeFormatItem), XX("f", FilenameFormatItem), XX("l", LineFormatItem),
-        XX("T", TabFormatItem),      XX("F", FiberIdFormatItem),
+        XX("T", TabFormatItem),      XX("F", FiberIdFormatItem),  XX("N", ThreadNameFormatItem),
 #undef XX
     };
 
