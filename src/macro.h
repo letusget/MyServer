@@ -1,3 +1,10 @@
+/**
+ * @file macro.h
+ * @author william
+ * @date 2024-06-09
+ * @brief This file contains some macro definitions.
+ * 
+*/
 #ifndef __MYSERVER_MACRO_H__
 #define __MYSERVER_MACRO_H__
 
