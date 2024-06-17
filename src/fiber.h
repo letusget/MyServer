@@ -1,3 +1,10 @@
+/**
+ * @file fiber.h
+ * @author William <<EMAIL>>
+ * @date 2024-06-10
+ * @version 0.1
+ * @brief 协程类
+*/
 #ifndef __MYSERVER_FIBER_H__
 #define __MYSERVER_FIBER_H__
 
