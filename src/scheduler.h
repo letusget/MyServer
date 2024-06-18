@@ -1,3 +1,11 @@
+/**
+ * @file scheduler.h
+ * @author william
+ * @date 2024-06-16
+ * @brief 协程调度器
+ * @version 0.1
+ * @note 协程调度器，负责管理协程的调度，包括创建、调度、停止等功能
+ */
 #ifndef __MYSERVER_SCHEDULER_H__
 #define __MYSERVER_SCHEDULER_H__
 
@@ -96,6 +104,21 @@ class Scheduler {
      * @return 无
      */
     virtual void tickle();
+    /**
+     * @brief 协程调度器是否停止
+     * @return bool 协程调度器是否停止
+     */
+    virtual bool stopping();
+    /**
+     * @brief 协程调度器运行函数
+     * @return 无
+     */
+    void run();
+    /**
+     * @brief 设置当前协程调度器对象
+     * @return 无
+     */
+    void setThis();
 
    private:
     /**
@@ -142,7 +165,19 @@ class Scheduler {
     std::vector<Thread::ptr> m_threads;
     // 计划执行的协程对象
     std::list<FiberAndThread> m_fibers;
+    // 主协程调度器对象
+    Fiber::ptr m_rootFiber;
     std::string m_name;
+
+   protected:
+    // 协程状态相关参数
+    std::vector<int> m_threadIds;        // 线程id列表
+    size_t m_threadCount       = 0;      // 线程数
+    size_t m_activeThreadCount = 0;      // 活跃线程数
+    size_t m_idleThreadCount   = 0;      // 空闲线程数
+    bool m_stopping            = true;   // 协程执行状态：true表示停止，false表示运行
+    bool m_autoStop            = false;  // 协程主动停止状态：true表示已停止，false表示未停止
+    int m_rootThreadId         = 0;      // 主线程id
 };
 }  // namespace myserver
 #endif

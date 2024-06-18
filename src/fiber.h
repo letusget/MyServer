@@ -97,6 +97,7 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
     static void MainFunc();
 
     static uint64_t GetFiberId();
+    static State GetFiberState();
 
    private:
     uint64_t m_id        = 0;        // 协程 ID
