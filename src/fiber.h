@@ -4,7 +4,7 @@
  * @date 2024-06-10
  * @version 0.1
  * @brief 协程类
-*/
+ */
 #ifndef __MYSERVER_FIBER_H__
 #define __MYSERVER_FIBER_H__
 
@@ -97,7 +97,8 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
     static void MainFunc();
 
     static uint64_t GetFiberId();
-    static State GetFiberState();
+    State GetFiberState() const { return m_state; }
+    void SetFiberState(State state) { m_state = state; }
 
    private:
     uint64_t m_id        = 0;        // 协程 ID

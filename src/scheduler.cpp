@@ -85,7 +85,7 @@ void Scheduler::stop() {
         }
     }
 
-    bool exit_on_this_fiber = false;
+    // bool exit_on_this_fiber = false;
     if (m_rootThreadId == -1) {
         MYSERVER_ASSERT_MSG(GetThis() == this, "only one scheduler can be used in a thread");
     } else {
@@ -114,10 +114,98 @@ void Scheduler::stop() {
 void Scheduler::setThis() { t_scheduler = this; }
 
 void Scheduler::run() {
+    Fiber::GetThis();
     setThis();
     if (myserver::GetThreadId() != m_rootThreadId) {
         t_fiber = Fiber::GetThis().get();
     }
-    Fiber::ptr idle_fiber(new Fiber()));
+    Fiber::ptr idle_fiber(new Fiber(std::bind(&Scheduler::idle, this)));
+
+    // 回调
+    Fiber::ptr cb_fiber;
+    FiberAndThread ft;
+    while (true) {
+        ft.reset();
+        bool tickle_me = false;
+        {
+            MutexType::Lock lock(m_mutex);
+            auto it = m_fibers.begin();
+            while (it != m_fibers.end()) {
+                // 已经分配好的线程不用调度
+                if (it->thread_id != -1 && it->thread_id != myserver::GetThreadId()) {
+                    ++it;
+                    // 通知其他线程执行
+                    tickle_me = true;
+                    continue;
+                }
+
+                MYSERVER_ASSERT_MSG(it->fiber || it->cb, "fiber or cb is null");
+                // 跳过正在执行的协程
+                if (it->fiber && it->fiber->GetFiberState() == Fiber::EXEC) {
+                    ++it;
+                    continue;
+                }
+
+                // 需要处理的协程
+                ft = *it;
+                m_fibers.erase(it);
+            }
+        }
+
+        if (tickle_me) {
+            tickle();
+        }
+
+        // 处理协程
+        if (ft.fiber && (ft.fiber->GetFiberState() != Fiber::TERM || ft.fiber->GetFiberState() != Fiber::EXCEPT)) {
+            ++m_activeThreadCount;
+            ft.fiber->swapIn();
+            --m_activeThreadCount;
+
+            if (ft.fiber->GetFiberState() == Fiber::READY) {
+                // 协程准备就绪，放入线程池
+                schedule(ft.fiber);
+            } else if (ft.fiber->GetFiberState() != Fiber::TERM && ft.fiber->GetFiberState() != Fiber::EXCEPT) {
+                // 让出执行权
+                ft.fiber->SetFiberState(Fiber::HOLD);
+            }
+            ft.reset();
+        } else if (ft.cb) {
+            if (cb_fiber) {
+                // cb_fiber->reset(&ft.cb);
+                cb_fiber->reset(ft.cb);
+            } else {
+                cb_fiber.reset(new Fiber(ft.cb));
+            }
+            ft.reset();
+            ++m_activeThreadCount;
+            cb_fiber->swapIn();
+            --m_activeThreadCount;
+
+            if (cb_fiber->GetFiberState() == Fiber::READY) {
+                schedule(cb_fiber);
+                cb_fiber.reset();
+            } else if (cb_fiber->GetFiberState() == Fiber::EXCEPT || cb_fiber->GetFiberState() == Fiber::TERM) {
+                // 协程异常或终止，放弃处理
+                cb_fiber.reset();
+            } else {
+                // 协程未结束
+                cb_fiber->SetFiberState(Fiber::HOLD);
+                cb_fiber.reset();
+            }
+        } else {
+            // 当前有任务执行的情况
+            if (idle_fiber->GetFiberState() == Fiber::TERM) {
+                break;
+            }
+
+            ++m_idleThreadCount;
+            idle_fiber->swapIn();
+            --m_idleThreadCount;
+            if (idle_fiber->GetFiberState() == Fiber::TERM || idle_fiber->GetFiberState() != Fiber::EXCEPT) {
+                idle_fiber->SetFiberState(Fiber::HOLD);
+            }
+        }
+    }
 }
 }  // namespace myserver

@@ -196,8 +196,8 @@ void Fiber::MainFunc() {
 
     // 回到主协程
     // 如果直接swapOut，会导致回到MainFunc，这里智能指针cur的引用计数继续+1，永不为0，所以不会被释放
-    auto raw_ptr = cur.get();   // 转为裸指针
-    cur.reset();  // 释放智能指针
+    auto raw_ptr = cur.get();  // 转为裸指针
+    cur.reset();               // 释放智能指针
     raw_ptr->swapOut();
 
     MYSERVER_ASSERT_MSG(false, "should not reach here");

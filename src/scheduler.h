@@ -9,8 +9,11 @@
 #ifndef __MYSERVER_SCHEDULER_H__
 #define __MYSERVER_SCHEDULER_H__
 
+#include <atomic>
+#include <functional>
 #include <list>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "fiber.h"
@@ -119,6 +122,12 @@ class Scheduler {
      * @return 无
      */
     void setThis();
+    /**
+     * @brief 协程调度器空闲函数
+     * @return 无
+     * @note 在没有任务需要执行时，协程调度器会调用该函数，要么让出CPU，要么循环等待
+     */
+    void idle();
 
    private:
     /**
@@ -167,17 +176,18 @@ class Scheduler {
     std::list<FiberAndThread> m_fibers;
     // 主协程调度器对象
     Fiber::ptr m_rootFiber;
+    // 协程调度器名
     std::string m_name;
 
    protected:
     // 协程状态相关参数
-    std::vector<int> m_threadIds;        // 线程id列表
-    size_t m_threadCount       = 0;      // 线程数
-    size_t m_activeThreadCount = 0;      // 活跃线程数
-    size_t m_idleThreadCount   = 0;      // 空闲线程数
-    bool m_stopping            = true;   // 协程执行状态：true表示停止，false表示运行
-    bool m_autoStop            = false;  // 协程主动停止状态：true表示已停止，false表示未停止
-    int m_rootThreadId         = 0;      // 主线程id
+    std::vector<int> m_threadIds;                    // 线程id列表
+    size_t m_threadCount                    = 0;     // 线程数
+    std::atomic<size_t> m_activeThreadCount = {0};   // 活跃线程数
+    std::atomic<size_t> m_idleThreadCount   = {0};   // 空闲线程数
+    bool m_stopping                         = true;  // 协程执行状态：true表示停止，false表示运行
+    bool m_autoStop    = false;  // 协程主动停止状态：true表示已停止，false表示未停止
+    int m_rootThreadId = 0;      // 主线程id
 };
 }  // namespace myserver
 #endif
