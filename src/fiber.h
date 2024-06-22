@@ -57,6 +57,12 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
      */
     void swapOut();
 
+    /**
+     * @brief 强行将当前线程置换为目标线程
+     * @note 与swapIn()和swapOut()配合使用，可以实现线程间的切换
+    */
+    void call();
+
     uint64_t getId() const { return m_id; }
 
    public:

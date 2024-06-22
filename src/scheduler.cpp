@@ -70,6 +70,15 @@ void Scheduler::start() {
         m_threads[i].reset(new Thread(std::bind(&Scheduler::run, this), m_name + "_" + std::to_string(i)));
         m_threadIds.push_back(m_threads[i]->getId());
     }
+    // 这里手动需要解锁，因为run函数中会重新加锁
+    lock.unlock();
+
+    if(m_rootFiber) {
+        // TODO bug 这里的逻辑有点问题，需要重新考虑
+        // m_rootFiber->swapIn();
+        m_rootFiber->call();
+        MYLOG_LOG_INFO(g_logger) << this << " started, " << "call out";
+    }
 }
 
 void Scheduler::stop() {
@@ -114,11 +123,13 @@ void Scheduler::stop() {
 void Scheduler::setThis() { t_scheduler = this; }
 
 void Scheduler::run() {
+    MYLOG_LOG_INFO(g_logger) << "run";
     Fiber::GetThis();
     setThis();
     if (myserver::GetThreadId() != m_rootThreadId) {
         t_fiber = Fiber::GetThis().get();
     }
+    // 任务空闲时执行的协程
     Fiber::ptr idle_fiber(new Fiber(std::bind(&Scheduler::idle, this)));
 
     // 回调
@@ -128,6 +139,7 @@ void Scheduler::run() {
         ft.reset();
         bool tickle_me = false;
         {
+            // 从协程的队列中取出协程
             MutexType::Lock lock(m_mutex);
             auto it = m_fibers.begin();
             while (it != m_fibers.end()) {
@@ -172,7 +184,6 @@ void Scheduler::run() {
             ft.reset();
         } else if (ft.cb) {
             if (cb_fiber) {
-                // cb_fiber->reset(&ft.cb);
                 cb_fiber->reset(ft.cb);
             } else {
                 cb_fiber.reset(new Fiber(ft.cb));
@@ -196,6 +207,7 @@ void Scheduler::run() {
         } else {
             // 当前有任务执行的情况
             if (idle_fiber->GetFiberState() == Fiber::TERM) {
+                MYLOG_LOG_INFO(g_logger) << "idle fiber terminated";
                 break;
             }
 
@@ -207,5 +219,20 @@ void Scheduler::run() {
             }
         }
     }
+}
+
+void Scheduler::tickle() {
+    // TODO
+    MYLOG_LOG_INFO(g_logger) << "tickle";
+}
+
+bool Scheduler::stopping() {
+    MutexType::Lock lock(m_mutex);
+    return m_autoStop && m_stopping && m_fibers.empty() && m_activeThreadCount == 0 && m_idleThreadCount == 0;
+}
+
+void Scheduler::idle() {
+    // TODO 
+    MYLOG_LOG_INFO(g_logger) << "idle";
 }
 }  // namespace myserver

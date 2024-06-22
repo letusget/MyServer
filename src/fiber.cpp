@@ -5,6 +5,7 @@
 #include "config.h"
 #include "log.h"
 #include "macro.h"
+#include "scheduler.h"
 #include "util.h"
 
 namespace myserver {
@@ -125,16 +126,27 @@ void Fiber::swapIn() {
     MYSERVER_ASSERT(m_state != State::EXEC);
     m_state = State::EXEC;
 
-    if (swapcontext(&(t_current_fiber->m_ctx), &m_ctx)) {
+    // if (swapcontext(&(t_current_fiber->m_ctx), &m_ctx)) {
+    if (swapcontext(&(Scheduler::GetMainFiber()->m_ctx), &m_ctx)) {
         MYSERVER_ASSERT_MSG(false, "swapcontext failed");
     }
 }
 
 // 离开 fiber，切换到后台执行
 void Fiber::swapOut() {
-    SetThis(t_current_fiber.get());
+    // SetThis(t_current_fiber.get());
+    SetThis(Scheduler::GetMainFiber());
 
-    if (swapcontext(&m_ctx, &(t_current_fiber->m_ctx))) {
+    // if (swapcontext(&m_ctx, &(t_current_fiber->m_ctx))) {
+    if (swapcontext(&m_ctx, &(Scheduler::GetMainFiber()->m_ctx))) {
+        MYSERVER_ASSERT_MSG(false, "swapcontext failed");
+    }
+}
+
+void Fiber::call() {
+    m_state = State::EXEC;
+    // SetThis(this);
+    if (swapcontext(&(Scheduler::GetMainFiber()->m_ctx), &m_ctx)) {
         MYSERVER_ASSERT_MSG(false, "swapcontext failed");
     }
 }
@@ -182,7 +194,8 @@ void Fiber::MainFunc() {
         cur->m_state = State::TERM;  // 协程结束
     } catch (const std::exception& e) {
         cur->m_state = State::EXCEPT;  // 协程异常
-        MYLOG_LOG_ERROR(g_logger) << "exception caught in fiber: " << e.what();
+        MYLOG_LOG_ERROR(g_logger) << "exception caught in fiber: " << e.what() << " fiber id: " << cur->getId() << "\n"
+                                  << myserver::BacktraceToString();
     } catch (...) {
         cur->m_state = State::EXCEPT;  // 协程异常
         MYLOG_LOG_ERROR(g_logger) << "unknown exception caught in fiber";
@@ -200,7 +213,7 @@ void Fiber::MainFunc() {
     cur.reset();               // 释放智能指针
     raw_ptr->swapOut();
 
-    MYSERVER_ASSERT_MSG(false, "should not reach here");
+    MYSERVER_ASSERT_MSG(false, "should not reach here, reach fiber_id: " + std::to_string(raw_ptr->getId()));
 }
 
 uint64_t Fiber::GetFiberId() {

@@ -59,20 +59,29 @@ force_redefine_file_macro_for_sources(test_config)
 # 链接库
 target_link_libraries(test_config ${LIBS} yaml-cpp)
 
+# 线程模块自测
 add_executable(test_thread tests/test_thread.cpp)
 add_dependencies(test_thread myserver)
 force_redefine_file_macro_for_sources(test_thread)
 target_link_libraries(test_thread ${LIBS} yaml-cpp)
 
+# 工具模块自测
 add_executable(test_util tests/test_util.cpp)
 add_dependencies(test_util myserver)
 force_redefine_file_macro_for_sources(test_util)
 target_link_libraries(test_util ${LIBS} yaml-cpp)
 
+# 协程模块自测
 add_executable(test_fiber tests/test_fiber.cpp)
 add_dependencies(test_fiber myserver)
 force_redefine_file_macro_for_sources(test_fiber)
 target_link_libraries(test_fiber ${LIBS} yaml-cpp)
+
+# 协程调度器模块自测
+add_executable(test_scheduler tests/test_scheduler.cpp)
+add_dependencies(test_scheduler myserver)
+force_redefine_file_macro_for_sources(test_scheduler)
+target_link_libraries(test_scheduler ${LIBS} yaml-cpp)
 
 # 设置二进制和库的输出路径
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)

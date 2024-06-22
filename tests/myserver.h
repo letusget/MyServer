@@ -14,5 +14,6 @@
 #include "singleton.h"
 #include "thread.h"
 #include "util.h"
+#include "scheduler.h"
 
 #endif  // __MYSERVER_H_
