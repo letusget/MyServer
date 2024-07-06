@@ -35,7 +35,7 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
     Fiber();
 
    public:
-    Fiber(std::function<void()> cb, size_t stacksize = 0);
+    Fiber(std::function<void()> cb, size_t stacksize = 0, bool use_caller = false);
     ~Fiber();
 
     /**
@@ -60,8 +60,14 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
     /**
      * @brief 强行将当前线程置换为目标线程
      * @note 与swapIn()和swapOut()配合使用，可以实现线程间的切换
-    */
+     */
     void call();
+
+    /**
+     * @brief 回到主协程, 不判断当前 fiber 是否为主 fiber
+     * @note 与swapIn()和swapOut()配合使用，可以实现协程间的切换
+     */
+    void back();
 
     uint64_t getId() const { return m_id; }
 
@@ -101,6 +107,10 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
      * @brief 执行主 fiber
      */
     static void MainFunc();
+    /**
+     * @brief 执行 caller fiber
+     */
+    static void CallerMainFunc();
 
     static uint64_t GetFiberId();
     State GetFiberState() const { return m_state; }

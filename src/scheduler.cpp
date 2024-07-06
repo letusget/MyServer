@@ -24,7 +24,8 @@ Scheduler::Scheduler(size_t threads, bool use_caller, const std::string& name) :
         t_scheduler = this;
 
         // 工作协程
-        m_rootFiber.reset(new Fiber(std::bind(&Scheduler::run, this)));
+        // m_rootFiber.reset(new Fiber(std::bind(&Scheduler::run, this)));
+        m_rootFiber.reset(new Fiber(std::bind(&Scheduler::run, this), 0, true));
         // 确保线程名称已经设置
         myserver::Thread::SetName(m_name);
 
@@ -73,11 +74,11 @@ void Scheduler::start() {
     // 这里手动需要解锁，因为run函数中会重新加锁
     lock.unlock();
 
-    if(m_rootFiber) {
-        // TODO bug 这里的逻辑有点问题，需要重新考虑
+    if (m_rootFiber) {
         // m_rootFiber->swapIn();
         m_rootFiber->call();
-        MYLOG_LOG_INFO(g_logger) << this << " started, " << "call out";
+        MYLOG_LOG_INFO(g_logger) << this << " started, "
+                                 << "call out";
     }
 }
 
@@ -95,7 +96,7 @@ void Scheduler::stop() {
     }
 
     // bool exit_on_this_fiber = false;
-    if (m_rootThreadId == -1) {
+    if (m_rootThreadId != -1) {
         MYSERVER_ASSERT_MSG(GetThis() == this, "only one scheduler can be used in a thread");
     } else {
         MYSERVER_ASSERT_MSG(GetThis() != this, "only one scheduler can be used in a thread");
@@ -109,7 +110,19 @@ void Scheduler::stop() {
 
     if (m_rootFiber) {
         tickle();
+        // if(!stopping()) {
+        //     m_rootFiber->call();
+        // }
     }
+
+    // std::vector<Thread::ptr> threads;
+    // {
+    //     MutexType::Lock lock(m_mutex);
+    //     threads.swap(m_threads);
+    // }
+    // for(auto& thread: threads) {
+    //     thread->join();
+    // }
 
     if (stopping()) {
         return;
@@ -161,6 +174,8 @@ void Scheduler::run() {
                 // 需要处理的协程
                 ft = *it;
                 m_fibers.erase(it);
+                ++m_activeThreadCount;
+                break;  // 取出一个协程后退出循环
             }
         }
 
@@ -169,7 +184,7 @@ void Scheduler::run() {
         }
 
         // 处理协程
-        if (ft.fiber && (ft.fiber->GetFiberState() != Fiber::TERM || ft.fiber->GetFiberState() != Fiber::EXCEPT)) {
+        if (ft.fiber && (ft.fiber->GetFiberState() != Fiber::TERM && ft.fiber->GetFiberState() != Fiber::EXCEPT)) {
             ++m_activeThreadCount;
             ft.fiber->swapIn();
             --m_activeThreadCount;
@@ -214,7 +229,7 @@ void Scheduler::run() {
             ++m_idleThreadCount;
             idle_fiber->swapIn();
             --m_idleThreadCount;
-            if (idle_fiber->GetFiberState() == Fiber::TERM || idle_fiber->GetFiberState() != Fiber::EXCEPT) {
+            if (idle_fiber->GetFiberState() != Fiber::TERM && idle_fiber->GetFiberState() != Fiber::EXCEPT) {
                 idle_fiber->SetFiberState(Fiber::HOLD);
             }
         }
@@ -232,7 +247,7 @@ bool Scheduler::stopping() {
 }
 
 void Scheduler::idle() {
-    // TODO 
+    // TODO
     MYLOG_LOG_INFO(g_logger) << "idle";
 }
 }  // namespace myserver

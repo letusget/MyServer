@@ -49,7 +49,7 @@ Fiber::Fiber() {
     MYLOG_LOG_DEBUG(g_logger) << "Fiber::Fiber ";
 }
 
-Fiber::Fiber(std::function<void()> cb, size_t stacksize) : m_id(++s_fiber_id), m_cb(cb) {
+Fiber::Fiber(std::function<void()> cb, size_t stacksize, bool use_caller) : m_id(++s_fiber_id), m_cb(cb) {
     ++s_fiber_count;
     // 设置协程的栈大小，支持配置
     m_stacksize = stacksize ? stacksize : g_fiber_stack_size->getValue();
@@ -65,12 +65,18 @@ Fiber::Fiber(std::function<void()> cb, size_t stacksize) : m_id(++s_fiber_id), m
     }
 
     // 关联上下文
-    m_ctx.uc_link          = &(t_current_fiber->m_ctx);  // 关联到当前线程的主协程
+    // m_ctx.uc_link          = &(t_current_fiber->m_ctx);  // 关联到当前线程的主协程
+    m_ctx.uc_link          = nullptr;  // 关联到当前线程的主协程
     m_ctx.uc_stack.ss_sp   = m_stack;
     m_ctx.uc_stack.ss_size = m_stacksize;
-    makecontext(&m_ctx, &Fiber::MainFunc, 0);
 
-    MYLOG_LOG_DEBUG(g_logger) << "Fiber::Fiber id: " << m_id;
+    if (use_caller) {
+        makecontext(&m_ctx, &Fiber::MainFunc, 0);
+    } else {
+        makecontext(&m_ctx, &Fiber::CallerMainFunc, 0);
+    }
+
+    MYLOG_LOG_DEBUG(g_logger) << "Fiber::Fiber id: " << m_id << " total: " << s_fiber_count;
 }
 
 Fiber::~Fiber() {
@@ -120,6 +126,15 @@ bool Fiber::reset(std::function<void()> cb) {
     return true;
 }
 
+// 回到主协程
+void Fiber::back() {
+    // 与真正的主协程交互
+    SetThis(t_current_fiber.get());
+    if (swapcontext(&m_ctx, &t_current_fiber->m_ctx)) {
+        MYSERVER_ASSERT_MSG(false, "swapcontext failed with main fiber");
+    }
+}
+
 // 进入 fiber，切换到当前协程执行
 void Fiber::swapIn() {
     SetThis(this);
@@ -134,19 +149,28 @@ void Fiber::swapIn() {
 
 // 离开 fiber，切换到后台执行
 void Fiber::swapOut() {
+    // if (t_main_fiber != Scheduler::GetMainFiber()) {
+    //     // 与后台协程交互
+    //     SetThis(Scheduler::GetMainFiber());
+    //     if (swapcontext(&m_ctx, &(Scheduler::GetMainFiber()->m_ctx))) {
+    //         MYSERVER_ASSERT_MSG(false, "swapcontext failed with current fiber");
+    //     }
+    // } else {
+    // 与真正的主协程交互
     // SetThis(t_current_fiber.get());
     SetThis(Scheduler::GetMainFiber());
-
-    // if (swapcontext(&m_ctx, &(t_current_fiber->m_ctx))) {
+    // if (swapcontext(&m_ctx, &t_current_fiber->m_ctx)) {
     if (swapcontext(&m_ctx, &(Scheduler::GetMainFiber()->m_ctx))) {
-        MYSERVER_ASSERT_MSG(false, "swapcontext failed");
+        MYSERVER_ASSERT_MSG(false, "swapcontext failed with main fiber");
     }
+    // }
 }
 
 void Fiber::call() {
+    SetThis(this);
     m_state = State::EXEC;
-    // SetThis(this);
-    if (swapcontext(&(Scheduler::GetMainFiber()->m_ctx), &m_ctx)) {
+    // if (swapcontext(&(Scheduler::GetMainFiber()->m_ctx), &m_ctx)) {
+    if (swapcontext(&t_current_fiber->m_ctx, &m_ctx)) {
         MYSERVER_ASSERT_MSG(false, "swapcontext failed");
     }
 }
@@ -169,20 +193,23 @@ Fiber::ptr Fiber::GetThis() {
 // 协程切换到后台，并且设置为 ready 状态
 void Fiber::YieldToReady() {
     Fiber::ptr cur = GetThis();
-    cur->m_state   = State::READY;
+    MYSERVER_ASSERT_MSG(cur->m_state == State::EXEC, "current fiber state is not EXEC");
+    cur->m_state = State::READY;
     cur->swapOut();
 }
 
 // 协程切换到后台，并且设置为 hold 状态
 void Fiber::YieldToHold() {
     Fiber::ptr cur = GetThis();
-    cur->m_state   = State::HOLD;
+    MYSERVER_ASSERT_MSG(cur->m_state == State::EXEC, "current fiber state is not EXEC")
+    // cur->m_state   = State::HOLD;
     cur->swapOut();
 }
 
 // 获取当前 fiber 总数
 uint64_t Fiber::TotalFibers() { return s_fiber_count; }
 
+// 执行主 fiber
 void Fiber::MainFunc() {
     Fiber::ptr cur = GetThis();
     MYSERVER_ASSERT(cur);
@@ -212,6 +239,34 @@ void Fiber::MainFunc() {
     auto raw_ptr = cur.get();  // 转为裸指针
     cur.reset();               // 释放智能指针
     raw_ptr->swapOut();
+
+    MYSERVER_ASSERT_MSG(false, "should not reach here, reach fiber_id: " + std::to_string(raw_ptr->getId()));
+}
+
+// 执行 caller fiber
+void Fiber::CallerMainFunc() {
+    Fiber::ptr cur = GetThis();
+    MYSERVER_ASSERT(cur);
+
+    // 设置当前 fiber
+    try {
+        cur->m_cb();
+        cur->m_cb    = nullptr;
+        cur->m_state = State::TERM;  // 协程结束
+    } catch (const std::exception& e) {
+        cur->m_state = State::EXCEPT;  // 协程异常
+        MYLOG_LOG_ERROR(g_logger) << "exception caught in fiber: " << e.what() << " fiber id: " << cur->getId() << "\n"
+                                  << myserver::BacktraceToString();
+    } catch (...) {
+        cur->m_state = State::EXCEPT;  // 协程异常
+        MYLOG_LOG_ERROR(g_logger) << "unknown exception caught in fiber";
+    }
+
+    // 回到主协程
+    // 如果直接swapOut，会导致回到MainFunc，这里智能指针cur的引用计数继续+1，永不为0，所以不会被释放
+    auto raw_ptr = cur.get();  // 转为裸指针
+    cur.reset();               // 释放智能指针
+    raw_ptr->back();
 
     MYSERVER_ASSERT_MSG(false, "should not reach here, reach fiber_id: " + std::to_string(raw_ptr->getId()));
 }
